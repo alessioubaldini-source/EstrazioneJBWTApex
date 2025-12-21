@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Estrazione XML JBWT</title>
+    <!-- SheetJS per Export Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background-color: #f9fafb;
+        color: #111827;
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .header-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #1e40af;
+      }
+      .upload-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.2s;
+      }
+      .upload-btn:hover {
+        background: #1d4ed8;
+      }
+      .controls-container {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+        flex-wrap: wrap;
+      }
+      .search-input {
+        flex: 1;
+        min-width: 200px;
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+      }
+      .search-input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+      }
+      .download-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #059669;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.2s;
+      }
+      .download-btn:hover {
+        background: #047857;
+      }
+      .loading,
+      .error {
+        padding: 16px;
+        border-radius: 6px;
+        margin-top: 16px;
+      }
+      .loading {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+      .error {
+        background: #fee2e2;
+        border: 1px solid #fca5a5;
+        color: #991b1b;
+      }
+      .description-box {
+        background: linear-gradient(to right, #dbeafe, #e0e7ff);
+        border-left: 4px solid #2563eb;
+        border-radius: 8px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .description-box h2 {
+        font-size: 24px;
+        font-weight: bold;
+        color: #1e3a8a;
+        margin-bottom: 8px;
+      }
+      .grid-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+      .grid-header h2 {
+        font-size: 20px;
+        font-weight: bold;
+        color: #1e40af;
+        margin-bottom: 8px;
+      }
+      .badge-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+        margin-bottom: 6px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 9999px;
+        font-size: 14px;
+      }
+      .badge-purple {
+        background: #e9d5ff;
+        color: #6b21a8;
+      }
+      .badge-gray {
+        background: #f3f4f6;
+        color: #374151;
+      }
+      .badge-green {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .badge-red {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .badge-blue {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+      .badge-orange {
+        background: #ffedd5;
+        color: #9a3412;
+      }
+      .badge-yellow {
+        background: #fef9c3;
+        color: #854d0e;
+      }
+      .section {
+        margin-bottom: 16px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .section-header {
+        width: 100%;
+        padding: 12px 16px;
+        background: #f3f4f6;
+        border: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.2s;
+      }
+      .section-header:hover {
+        background: #e5e7eb;
+      }
+      .section-content {
+        padding: 16px;
+        display: none;
+      }
+      .section-content.open {
+        display: block;
+      }
+      .code-block-wrapper {
+        position: relative;
+        margin-bottom: 16px;
+      }
+      .code-block {
+        background: #f9fafb;
+        padding: 12px;
+        border-radius: 6px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        overflow-x: auto;
+        border: 1px solid #e5e7eb;
+        white-space: pre-wrap;
+      }
+
+      /* Updated Copy Button Styles */
+      .copy-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 6px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        cursor: pointer;
+        opacity: 0;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+      }
+
+      .code-block-wrapper:hover .copy-btn {
+        opacity: 1;
+      }
+
+      .copy-btn:hover {
+        background: #f3f4f6;
+        color: #374151;
+      }
+
+      .copy-btn.copied {
+        color: #059669;
+        border-color: #a7f3d0;
+        background-color: #ecfdf5;
+      }
+
+      .info-label {
+        font-weight: 600;
+        margin-right: 4px;
+      }
+      .table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 13px;
+        margin: 16px 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      }
+      .table th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #475569;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.05em;
+        padding: 12px 16px;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+      }
+      .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e2e8f0;
+        color: #334155;
+        text-align: left;
+      }
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+      .table tr:nth-child(even) {
+        background-color: #f8fafc;
+      }
+      .table tr:hover {
+        background-color: #f1f5f9;
+        transition: background-color 0.15s ease;
+      }
+      .action-box {
+        border-left: 4px solid #60a5fa;
+        padding-left: 12px;
+        margin: 12px 0;
+      }
+      .text-gray {
+        color: #6b7280;
+      }
+      .text-sm {
+        font-size: 14px;
+      }
+      .text-xs {
+        font-size: 12px;
+      }
+      .mb-1 {
+        margin-bottom: 4px;
+      }
+      .mb-2 {
+        margin-bottom: 8px;
+      }
+      .mb-3 {
+        margin-bottom: 12px;
+      }
+      .hidden {
+        display: none;
+      }
+      #fileInput {
+        display: none;
+      }
+      .order-by-box {
+        background: #dbeafe;
+        border: 1px solid #93c5fd;
+        padding: 12px;
+        border-radius: 6px;
+        margin-top: 12px;
+      }
+      .order-by-box.green {
+        background: #d1fae5;
+        border-color: #6ee7b7;
+      }
+      .popup-card {
+        border-left: 4px solid #f97316;
+        background: #fff7ed;
+        padding: 16px;
+        margin-bottom: 16px;
+        border-radius: 4px;
+      }
+      .toggle-all-btn {
+        font-size: 12px;
+        padding: 4px 8px;
+        background: #e5e7eb;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 8px;
+        margin-bottom: 8px;
+        color: #374151;
+        transition: background 0.2s;
+      }
+      .toggle-all-btn:hover {
+        background: #d1d5db;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header-card">
+        <h1><span>📄</span> Estrazione XML JBWT</h1>
+        <label class="upload-btn">
+          <span>⬆️</span> Carica File XML
+          <input type="file" id="fileInput" accept=".xml" />
+        </label>
+
+        <div class="controls-container">
+          <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cerca grid per nome..." disabled />
+          <button id="downloadBtn" class="download-btn" onclick="downloadExcel()" disabled>📊 Scarica Excel</button>
+        </div>
+
+        <div id="loading" class="loading hidden">Caricamento file XML in corso...</div>
+        <div id="error" class="error hidden"></div>
+      </div>
+      <div id="content"></div>
+    </div>
+
+    <script>
+      let expandedSections = {};
+      let currentData = null; // Variabile globale per memorizzare i dati per l'export
+
+      // Icona SVG per "copia" (due fogli)
+      const COPY_ICON = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+        `;
+
+      // Icona SVG per "copiato" (check)
+      const COPIED_ICON = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        `;
+
+      function getDirectChild(element, tagName) {
+        return Array.from(element.children).find((el) => el.nodeName === tagName);
+      }
+
+      async function loadDefaultXML() {
+        const loadingEl = document.getElementById('loading');
+        const errorEl = document.getElementById('error');
+
+        try {
+          loadingEl.classList.remove('hidden');
+          if (window.fs && window.fs.readFile) {
+            try {
+              const response = await window.fs.readFile('AUTG0006.xml', { encoding: 'utf8' });
+              const data = parseXML(response);
+              renderData(data);
+            } catch (e) {
+              console.log('File di default non trovato, attesa upload utente');
+            }
+          }
+          loadingEl.classList.add('hidden');
+        } catch (err) {
+          loadingEl.classList.add('hidden');
+        }
+      }
+
+      document.getElementById('fileInput').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const errorEl = document.getElementById('error');
+        errorEl.classList.add('hidden');
+
+        try {
+          const text = await file.text();
+          const data = parseXML(text);
+          renderData(data);
+        } catch (err) {
+          errorEl.textContent = err.message;
+          errorEl.classList.remove('hidden');
+        }
+      });
+
+      function parseXML(xmlText) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+
+        if (xmlDoc.querySelector('parsererror')) {
+          throw new Error('Errore nel parsing XML');
+        }
+
+        const actionsMap = extractAllActions(xmlDoc);
+        const result = {
+          grids: [],
+          popups: [],
+          description: null,
+          whenNewFormInstance: [],
+          whenNewFormInstanceGroovy: [],
+        };
+
+        const commentMatch = xmlText.match(/<!--[\s\S]*?Descrizione\.+:\s*(.+?)\s*-->/);
+        if (commentMatch && commentMatch[1]) {
+          result.description = commentMatch[1].trim();
+        }
+
+        const formWhenNew = xmlDoc.querySelector('form > events > whenNewFormInstance');
+        if (formWhenNew) {
+          const actionRef = formWhenNew.getAttribute('actionRef');
+          if (actionRef) {
+            result.whenNewFormInstance = actionRef.split(',').map((a) => a.trim());
+            result.whenNewFormInstanceGroovy = concatenateGroovyScripts(result.whenNewFormInstance, actionsMap);
+          }
+        }
+
+        const popups = xmlDoc.querySelectorAll('form > popups > popup');
+        popups.forEach((popup) => {
+          const popupData = {
+            name: popup.getAttribute('name'),
+            title: popup.getAttribute('title'),
+            width: popup.getAttribute('width'),
+            height: popup.getAttribute('height'),
+            grids: [],
+          };
+          const popupGrids = popup.querySelectorAll('grids > grid');
+          popupGrids.forEach((g) => {
+            popupData.grids.push(g.getAttribute('name'));
+          });
+          result.popups.push(popupData);
+        });
+
+        const grids = xmlDoc.querySelectorAll('grid');
+        grids.forEach((grid) => {
+          const insertAttr = grid.getAttribute('insertAllowed');
+          const updateAttr = grid.getAttribute('updateAllowed');
+          const deleteAttr = grid.getAttribute('deleteAllowed');
+
+          const gridData = {
+            name: grid.getAttribute('name'),
+            label: grid.getAttribute('label'),
+            ref: grid.getAttribute('ref'),
+            insertAllowed: insertAttr !== null ? insertAttr : 'true',
+            updateAllowed: updateAttr !== null ? updateAttr : 'true',
+            deleteAllowed: deleteAttr !== null ? deleteAttr : 'true',
+            tab: findParentTab(grid),
+            rpcExpand: null,
+            rpcExpandInitOrderBy: null,
+            rpcExpandInit: null,
+            listOfValues: [],
+            comboboxes: [],
+            checkAndSaveData: null,
+            beforeCommitValidation: [],
+            events: [],
+            bottomToolbarButtons: [],
+            templates: {},
+          };
+
+          const filterNode = getDirectChild(grid, 'filter');
+          if (filterNode) {
+            const templatesNode = getDirectChild(filterNode, 'templates');
+            if (templatesNode) {
+              Array.from(templatesNode.children).forEach((t) => {
+                if (t.nodeName === 'template') {
+                  const tName = t.getAttribute('name');
+                  if (tName) gridData.templates[tName] = t.textContent.trim();
+                }
+              });
+            }
+          }
+          const directTemplates = getDirectChild(grid, 'templates');
+          if (directTemplates) {
+            Array.from(directTemplates.children).forEach((t) => {
+              if (t.nodeName === 'template') {
+                const tName = t.getAttribute('name');
+                if (tName) gridData.templates[tName] = t.textContent.trim();
+              }
+            });
+          }
+
+          const rpcExpandTag = getDirectChild(grid, 'rpcExpand');
+          if (rpcExpandTag) {
+            const rpcExpandValue = rpcExpandTag.querySelector('paginatedExpand > value') || rpcExpandTag.querySelector('expand > value') || rpcExpandTag.querySelector('value');
+
+            if (rpcExpandValue) {
+              gridData.rpcExpand = replaceTemplates(rpcExpandValue.textContent.trim(), gridData.templates);
+            }
+
+            const initOrderBy = rpcExpandTag.querySelector('paginatedExpand > initOrderBy');
+            if (initOrderBy) {
+              gridData.rpcExpandInitOrderBy = initOrderBy.textContent.trim();
+            }
+          }
+
+          const rpcExpandInitTag = getDirectChild(grid, 'rpcExpandInit');
+          if (rpcExpandInitTag) {
+            const rpcExpandInitValue = rpcExpandInitTag.querySelector('expand > value');
+            if (rpcExpandInitValue) {
+              gridData.rpcExpandInit = replaceTemplates(rpcExpandInitValue.textContent.trim(), gridData.templates);
+            }
+          }
+
+          const eventsNode = getDirectChild(grid, 'events');
+          if (eventsNode) {
+            Array.from(eventsNode.children).forEach((evt) => {
+              const evtName = evt.nodeName;
+              const actionRefAttr = evt.getAttribute('actionRef');
+              const waitingWindow = evt.getAttribute('waitingWindow');
+
+              let actionRefs = [];
+              if (actionRefAttr) {
+                actionRefs = actionRefAttr.split(',').map((a) => a.trim());
+              }
+
+              gridData.events.push({
+                name: evtName,
+                waitingWindow: waitingWindow,
+                actionRefs: actionRefs,
+                groovyScripts: concatenateGroovyScripts(actionRefs, actionsMap),
+              });
+            });
+          }
+
+          const lovs = grid.querySelectorAll('fields > listOfValue');
+          lovs.forEach((lov) => {
+            const lovData = {
+              name: lov.getAttribute('name'),
+              label: lov.getAttribute('label'),
+              value: null,
+              initOrderBy: null,
+            };
+            const lovValue = lov.querySelector('rpcExpand > paginatedExpand > value, rpcExpand > expand > value');
+            if (lovValue) {
+              lovData.value = replaceTemplates(lovValue.textContent.trim(), gridData.templates);
+            }
+            const lovInitOrderBy = lov.querySelector('rpcExpand > paginatedExpand > initOrderBy');
+            if (lovInitOrderBy) {
+              lovData.initOrderBy = lovInitOrderBy.textContent.trim();
+            }
+            gridData.listOfValues.push(lovData);
+          });
+
+          const combos = grid.querySelectorAll('fields > combobox, filter > fields > combobox');
+          combos.forEach((combo) => {
+            const comboData = {
+              name: combo.getAttribute('name'),
+              label: combo.getAttribute('label'),
+              rows: [],
+              sqlValue: null,
+            };
+
+            const rows = combo.querySelectorAll('rpcExpand > resultset > row');
+            if (rows.length > 0) {
+              rows.forEach((row) => {
+                const id = row.querySelector('id')?.textContent || '';
+                const label = row.querySelector('label')?.textContent || '';
+                comboData.rows.push({ id, label });
+              });
+            }
+
+            const sqlValue = combo.querySelector('rpcExpand > expand > value');
+            if (sqlValue) {
+              comboData.sqlValue = replaceTemplates(sqlValue.textContent.trim(), gridData.templates);
+            }
+
+            gridData.comboboxes.push(comboData);
+          });
+
+          const checkAndSave = grid.querySelector('action[name="save"] class[class="CheckAndSaveData"]');
+          if (checkAndSave) {
+            gridData.checkAndSaveData = { insert: [], update: [], delete: [] };
+            ['insert', 'update', 'delete'].forEach((op) => {
+              const lists = checkAndSave.querySelectorAll(`list[name="${op}"] > value`);
+              lists.forEach((val) => {
+                gridData.checkAndSaveData[op].push(replaceTemplates(val.textContent.trim(), gridData.templates));
+              });
+            });
+          }
+
+          const beforeCommit = grid.querySelectorAll('beforeCommitValidation');
+          beforeCommit.forEach((bc) => {
+            gridData.beforeCommitValidation.push({
+              name: bc.getAttribute('name'),
+              sql: bc.querySelector('param[name="sql"]')?.textContent.trim() || '',
+              function: bc.querySelector('param[name="function"]')?.textContent.trim() || '',
+              failMessage: bc.querySelector('param[name="failMessage"]')?.textContent.trim() || '',
+            });
+          });
+
+          const bottomToolbar = getDirectChild(grid, 'bottomToolbar');
+          if (bottomToolbar) {
+            const buttons = bottomToolbar.querySelectorAll('button, callFormButton');
+            buttons.forEach((btn) => {
+              let actionRefs = [];
+              const whenPressed = btn.querySelector('events > whenButtonPressed');
+              if (whenPressed) {
+                const actionRefAttr = whenPressed.getAttribute('actionRef');
+                if (actionRefAttr) {
+                  actionRefs = actionRefAttr.split(',').map((a) => a.trim());
+                }
+              }
+
+              let type = btn.tagName;
+              let callFormName = '';
+              if (type === 'callFormButton') {
+                const callFormNode = btn.querySelector('callFormName');
+                if (callFormNode) callFormName = callFormNode.textContent;
+              }
+
+              gridData.bottomToolbarButtons.push({
+                type: type,
+                name: btn.getAttribute('name'),
+                label: btn.getAttribute('label') || btn.getAttribute('hint'),
+                order: btn.getAttribute('order'),
+                callFormName: callFormName,
+                actionRef: actionRefs,
+                groovyScripts: concatenateGroovyScripts(actionRefs, actionsMap),
+              });
+            });
+          }
+
+          result.grids.push(gridData);
+        });
+
+        return result;
+      }
+
+      function extractAllActions(xmlDoc) {
+        const actionsMap = {};
+        const actions = xmlDoc.querySelectorAll('action');
+
+        actions.forEach((action) => {
+          const actionName = action.getAttribute('name');
+          if (!actionName) return;
+
+          const actionData = { scripts: [], sql: [] };
+          const groovyClasses = action.querySelectorAll('classes > class');
+
+          groovyClasses.forEach((groovyClass) => {
+            const className = groovyClass.getAttribute('name');
+            const classType = groovyClass.getAttribute('class');
+
+            const groovyParam = groovyClass.querySelector('param[name="groovy"]');
+            if (groovyParam) {
+              actionData.scripts.push({
+                className: className,
+                classType: classType,
+                script: groovyParam.textContent.trim(),
+              });
+            }
+
+            const sqlParam = groovyClass.querySelector('param[name="sql"]');
+            if (sqlParam) {
+              actionData.sql.push({
+                className: className,
+                classType: classType,
+                sql: sqlParam.textContent.trim(),
+                function: groovyClass.querySelector('param[name="function"]')?.textContent.trim() || '',
+              });
+            }
+          });
+
+          if (actionData.scripts.length > 0 || actionData.sql.length > 0) {
+            actionsMap[actionName] = actionData;
+          }
+        });
+        return actionsMap;
+      }
+
+      function replaceTemplates(code, templatesMap) {
+        if (!code || !templatesMap) return code;
+        let result = code;
+        const placeholders = code.match(/@([^@]+)@/g);
+        if (placeholders) {
+          placeholders.forEach((placeholder) => {
+            const templateName = placeholder.replace(/@/g, '');
+            if (templatesMap[templateName]) {
+              result = result.replace(placeholder, `\n/* Template: ${templateName} */\n${templatesMap[templateName]}\n/* End Template */\n`);
+            }
+          });
+        }
+        return result;
+      }
+
+      function findParentTab(gridElement) {
+        let parent = gridElement.parentElement;
+        while (parent && parent.nodeName !== 'form') {
+          if (parent.nodeName === 'tab') {
+            return {
+              name: parent.getAttribute('name'),
+              label: parent.getAttribute('label'),
+              order: parent.getAttribute('order'),
+            };
+          }
+          parent = parent.parentElement;
+        }
+        return null;
+      }
+
+      function concatenateGroovyScripts(actionRefs, actionsMap) {
+        if (!actionRefs || actionRefs.length === 0) return [];
+        const concatenated = [];
+        actionRefs.forEach((actionRef) => {
+          if (actionsMap[actionRef]) {
+            concatenated.push({
+              actionName: actionRef,
+              scripts: actionsMap[actionRef].scripts || [],
+              sql: actionsMap[actionRef].sql || [],
+            });
+          }
+        });
+        return concatenated;
+      }
+
+      function toggleSection(key) {
+        expandedSections[key] = !expandedSections[key];
+        const content = document.querySelector(`[data-section="${key}"]`);
+        const icon = document.querySelector(`[data-icon="${key}"]`);
+        if (content) {
+          content.classList.toggle('open');
+          icon.textContent = expandedSections[key] ? '▼' : '▶';
+        }
+      }
+
+      async function copyToClipboard(btn, id) {
+        try {
+          const wrapper = btn.closest('.code-block-wrapper');
+          const code = wrapper.querySelector('.code-block').textContent;
+          await navigator.clipboard.writeText(code);
+
+          btn.innerHTML = COPIED_ICON;
+          btn.classList.add('copied');
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = COPY_ICON;
+          }, 2000);
+        } catch (err) {
+          console.error('Errore nella copia:', err);
+        }
+      }
+
+      function renderData(data) {
+        currentData = data; // Salva i dati globalmente
+        document.getElementById('searchInput').disabled = false;
+        document.getElementById('downloadBtn').disabled = false;
+
+        const content = document.getElementById('content');
+        let html = '';
+
+        if (data.description) {
+          html += `
+                    <div class="description-box">
+                        <h2>Descrizione Form</h2>
+                        <p>${data.description}</p>
+                    </div>
+                `;
+        }
+
+        if (data.popups && data.popups.length > 0) {
+          html += renderSection(
+            'Popups',
+            'popups-section',
+            data.popups.length,
+            `
+                    <div class="grid-card">
+                        ${data.popups
+                          .map(
+                            (popup) => `
+                            <div class="popup-card">
+                                <h3 class="info-label text-lg mb-2" style="font-size: 1.125rem; color: #c2410c;">${popup.name}</h3>
+                                <p class="text-sm mb-1"><span class="info-label">Title:</span> ${popup.title || 'N/A'}</p>
+                                <p class="text-sm mb-1"><span class="info-label">Dimensioni:</span> ${popup.width} x ${popup.height}</p>
+                                <p class="text-sm mb-1">
+                                    <span class="info-label">Grids:</span> 
+                                    ${popup.grids.length > 0 ? popup.grids.map((g) => `<span class="badge badge-orange text-xs">${g}</span>`).join(' ') : 'Nessuno'}
+                                </p>
+                            </div>
+                        `
+                          )
+                          .join('')}
+                    </div>
+                `
+          );
+        }
+
+        if (data.whenNewFormInstance.length > 0) {
+          html += renderSection(
+            'When New Form Instance',
+            'form-whenNew',
+            data.whenNewFormInstance.length,
+            `
+                    <p class="text-sm mb-2"><span class="info-label">Actions:</span> ${data.whenNewFormInstance.join(', ')}</p>
+                    ${renderGroovyScripts(data.whenNewFormInstanceGroovy, 'form')}
+                `
+          );
+        }
+
+        data.grids.forEach((grid, idx) => {
+          const hasTemplates = Object.keys(grid.templates).length > 0;
+
+          html += `
+                    <div class="grid-card" data-grid-name="${grid.name.toLowerCase()}">
+                        <div class="grid-header">
+                            <h2>Grid: ${grid.name}</h2>
+                            ${grid.label ? `<p class="text-sm text-gray"><span class="info-label">Label:</span> ${grid.label}</p>` : ''}
+                            <div class="badge-container">
+                                ${grid.tab ? `<span class="badge badge-purple"><span class="info-label">Tab:</span> ${grid.tab.label} (${grid.tab.name})</span>` : ''}
+                                ${grid.ref ? `<span class="badge badge-gray"><span class="info-label">Ref:</span> ${grid.ref}</span>` : ''}
+                                <span class="badge ${grid.insertAllowed === 'true' ? 'badge-green' : 'badge-red'}"><span class="info-label">Insert:</span> ${grid.insertAllowed}</span>
+                                <span class="badge ${grid.updateAllowed === 'true' ? 'badge-green' : 'badge-red'}"><span class="info-label">Update:</span> ${grid.updateAllowed}</span>
+                                <span class="badge ${grid.deleteAllowed === 'true' ? 'badge-green' : 'badge-red'}"><span class="info-label">Delete:</span> ${grid.deleteAllowed}</span>
+                            </div>
+                            <button class="toggle-all-btn" onclick="toggleGridSections(this)">📂 Espandi tutto</button>
+                        </div>
+
+                        ${renderSection(
+                          'Templates',
+                          `tpl-${idx}`,
+                          Object.keys(grid.templates).length,
+                          hasTemplates
+                            ? Object.keys(grid.templates)
+                                .map(
+                                  (tplName, tplIdx) => `
+                                <div class="mb-3">
+                                    <h4 class="info-label text-sm" style="color: #059669;">${tplName}</h4>
+                                    ${renderCodeBlock(grid.templates[tplName], `tpl-${idx}-${tplIdx}`)}
+                                </div>
+                            `
+                                )
+                                .join('')
+                            : '<p class="text-gray">Nessun template definito</p>'
+                        )}
+
+                        ${renderSection(
+                          'RPC Expand',
+                          `rpc-${idx}`,
+                          grid.rpcExpand ? 1 : 0,
+                          grid.rpcExpand
+                            ? `
+                                ${renderCodeBlock(grid.rpcExpand, `rpc-${idx}`)}
+                                ${
+                                  grid.rpcExpandInitOrderBy
+                                    ? `
+                                    <div class="order-by-box">
+                                        <p class="text-sm info-label">Init Order By:</p>
+                                        <code>${grid.rpcExpandInitOrderBy}</code>
+                                    </div>
+                                `
+                                    : ''
+                                }
+                            `
+                            : '<p class="text-gray">Non presente</p>'
+                        )}
+
+                        ${renderSection('RPC Expand Init', `rpcinit-${idx}`, grid.rpcExpandInit ? 1 : 0, grid.rpcExpandInit ? renderCodeBlock(grid.rpcExpandInit, `rpcinit-${idx}`) : '<p class="text-gray">Non presente</p>')}
+
+                        ${renderSection(
+                          'List Of Values',
+                          `lov-${idx}`,
+                          grid.listOfValues.length,
+                          grid.listOfValues.length > 0
+                            ? grid.listOfValues
+                                .map(
+                                  (lov, lovIdx) => `
+                                <div class="mb-3">
+                                    <h4 class="info-label">${lov.name}${lov.label ? ` - ${lov.label}` : ''}</h4>
+                                    ${
+                                      lov.value
+                                        ? `
+                                        ${renderCodeBlock(lov.value, `lov-${idx}-${lovIdx}`)}
+                                        ${
+                                          lov.initOrderBy
+                                            ? `
+                                            <div class="order-by-box green">
+                                                <p class="text-sm info-label">Init Order By:</p>
+                                                <code>${lov.initOrderBy}</code>
+                                            </div>
+                                        `
+                                            : ''
+                                        }
+                                    `
+                                        : ''
+                                    }
+                                </div>
+                            `
+                                )
+                                .join('')
+                            : '<p class="text-gray">Nessuno presente</p>'
+                        )}
+
+                        ${renderSection(
+                          'Combobox',
+                          `combo-${idx}`,
+                          grid.comboboxes.length,
+                          grid.comboboxes.length > 0
+                            ? grid.comboboxes
+                                .map(
+                                  (combo, comboIdx) => `
+                                <div class="mb-3">
+                                    <h4 class="info-label">${combo.name}${combo.label ? ` - ${combo.label}` : ''}</h4>
+                                    ${
+                                      combo.rows.length > 0
+                                        ? `
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Label</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${combo.rows
+                                                  .map(
+                                                    (row) => `
+                                                    <tr>
+                                                        <td>${escapeHtml(row.id)}</td>
+                                                        <td>${escapeHtml(row.label)}</td>
+                                                    </tr>
+                                                `
+                                                  )
+                                                  .join('')}
+                                            </tbody>
+                                        </table>
+                                    `
+                                        : ''
+                                    }
+                                    ${combo.sqlValue ? renderCodeBlock(combo.sqlValue, `combo-${idx}-${comboIdx}`) : ''}
+                                </div>
+                            `
+                                )
+                                .join('')
+                            : '<p class="text-gray">Nessuno presente</p>'
+                        )}
+
+                        ${renderSection(
+                          'CheckAndSaveData',
+                          `check-${idx}`,
+                          grid.checkAndSaveData ? 1 : 0,
+                          grid.checkAndSaveData
+                            ? `
+                                ${['insert', 'update', 'delete']
+                                  .map((op) =>
+                                    grid.checkAndSaveData[op].length > 0
+                                      ? `
+                                        <div class="mb-3">
+                                            <h4 class="info-label" style="text-transform: capitalize;">${op}</h4>
+                                            ${grid.checkAndSaveData[op].map((sql, sqlIdx) => renderCodeBlock(sql, `check-${idx}-${op}-${sqlIdx}`)).join('')}
+                                        </div>
+                                    `
+                                      : ''
+                                  )
+                                  .join('')}
+                            `
+                            : '<p class="text-gray">Non presente</p>'
+                        )}
+
+                        ${renderSection(
+                          'Before Commit Validation',
+                          `before-${idx}`,
+                          grid.beforeCommitValidation.length,
+                          grid.beforeCommitValidation.length > 0
+                            ? grid.beforeCommitValidation
+                                .map(
+                                  (bc, bcIdx) => `
+                                <div class="mb-3">
+                                    <h4 class="info-label">${bc.name}</h4>
+                                    <p class="text-xs mb-1"><span class="info-label">Function:</span> ${bc.function}</p>
+                                    <p class="text-xs mb-2"><span class="info-label">Fail Message:</span> ${bc.failMessage}</p>
+                                    ${renderCodeBlock(bc.sql, `before-${idx}-${bcIdx}`)}
+                                </div>
+                            `
+                                )
+                                .join('')
+                            : '<p class="text-gray">Non presente</p>'
+                        )}
+
+                        ${renderSection(
+                          'Events',
+                          `events-${idx}`,
+                          grid.events.length,
+                          grid.events.length > 0
+                            ? grid.events
+                                .map(
+                                  (evt, eIdx) => `
+                                <div class="mb-3" style="border-left: 3px solid #6366f1; padding-left: 12px;">
+                                    <h4 class="info-label mb-1 text-indigo-700">${evt.name}</h4>
+                                    ${evt.waitingWindow ? `<span class="badge badge-yellow text-xs mb-2">Waiting Window</span>` : ''}
+                                    <p class="text-xs mb-2 mt-1"><span class="info-label">Action Refs:</span> ${evt.actionRefs.join(', ') || 'Nessuna'}</p>
+                                    ${renderGroovyScripts(evt.groovyScripts, `evt-${idx}-${eIdx}`)}
+                                </div>
+                            `
+                                )
+                                .join('')
+                            : '<p class="text-gray">Nessun evento</p>'
+                        )}
+
+                        ${renderSection(
+                          'Bottom Toolbar Buttons',
+                          `buttons-${idx}`,
+                          grid.bottomToolbarButtons.length,
+                          grid.bottomToolbarButtons.length > 0
+                            ? grid.bottomToolbarButtons
+                                .map(
+                                  (btn, btnIdx) => `
+                                <div class="mb-3" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
+                                    <p class="text-sm mb-1"><span class="badge badge-blue text-xs">${btn.type}</span></p>
+                                    <p class="text-sm mb-1"><span class="info-label">Name:</span> ${btn.name}</p>
+                                    <p class="text-sm mb-1"><span class="info-label">Label:</span> ${btn.label}</p>
+                                    <p class="text-sm mb-1"><span class="info-label">Order:</span> ${btn.order}</p>
+                                    ${btn.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${btn.callFormName}</p>` : ''}
+                                    <p class="text-sm mb-2"><span class="info-label">ActionRef:</span> ${btn.actionRef.join(', ') || 'Nessuno'}</p>
+                                    
+                                    ${
+                                      btn.groovyScripts.length > 0
+                                        ? `
+                                        <div style="margin-top: 12px;">
+                                            <p class="text-sm info-label" style="color: #4f46e5;">Script Actions:</p>
+                                            ${btn.groovyScripts
+                                              .map(
+                                                (action, aIdx) => `
+                                                <div style="border-left: 4px solid #818cf8; padding-left: 12px; margin-top: 8px;">
+                                                    <p class="text-xs info-label" style="color: #4f46e5; margin-bottom: 8px;">Action: ${action.actionName}</p>
+                                                    ${action.scripts
+                                                      .map(
+                                                        (script, sIdx) => `
+                                                        <div class="mb-2">
+                                                            <p class="text-xs text-gray mb-1">Class: ${script.className} ${script.classType ? `(${script.classType})` : ''}</p>
+                                                            <p class="text-xs text-gray mb-1">Type: Groovy Script</p>
+                                                            ${renderCodeBlock(script.script, `btn-groovy-${idx}-${btnIdx}-${aIdx}-${sIdx}`)}
+                                                        </div>
+                                                    `
+                                                      )
+                                                      .join('')}
+                                                    ${action.sql
+                                                      .map(
+                                                        (sqlItem, sIdx) => `
+                                                        <div class="mb-2">
+                                                            <p class="text-xs text-gray mb-1">Class: ${sqlItem.className} ${sqlItem.classType ? `(${sqlItem.classType})` : ''}</p>
+                                                            <p class="text-xs text-gray mb-1">Type: SQL ${sqlItem.function ? `| Function: ${sqlItem.function}` : ''}</p>
+                                                            ${renderCodeBlock(sqlItem.sql, `btn-sql-${idx}-${btnIdx}-${aIdx}-${sIdx}`)}
+                                                        </div>
+                                                    `
+                                                      )
+                                                      .join('')}
+                                                </div>
+                                            `
+                                              )
+                                              .join('')}
+                                        </div>
+                                    `
+                                        : ''
+                                    }
+                                </div>
+                            `
+                                )
+                                .join('')
+                            : '<p class="text-gray">Nessuno presente</p>'
+                        )}
+                    </div>
+                `;
+        });
+
+        content.innerHTML = html;
+      }
+
+      // Funzione di ricerca
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const grids = document.querySelectorAll('.grid-card[data-grid-name]');
+
+        grids.forEach((card) => {
+          const name = card.getAttribute('data-grid-name');
+          if (name.includes(term)) {
+            card.style.display = 'block';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+
+      // Funzione Toggle Sezioni Grid
+      function toggleGridSections(btn) {
+        const card = btn.closest('.grid-card');
+        const sections = card.querySelectorAll('.section-content');
+        const icons = card.querySelectorAll('[data-icon]');
+
+        // Determina lo stato: se la prima è aperta, chiudi tutto. Altrimenti apri tutto.
+        const isFirstOpen = sections[0] && sections[0].classList.contains('open');
+        const newState = !isFirstOpen;
+
+        sections.forEach((sec) => {
+          if (newState) sec.classList.add('open');
+          else sec.classList.remove('open');
+        });
+
+        icons.forEach((icon) => {
+          icon.textContent = newState ? '▼' : '▶';
+        });
+
+        btn.textContent = newState ? '📂 Collassa tutto' : '📂 Espandi tutto';
+      }
+
+      // Funzione Export Excel
+      function downloadExcel() {
+        if (!currentData) return;
+
+        const wb = XLSX.utils.book_new();
+
+        // Helper per applicare lo stile bold (funziona se la libreria supporta lo styling)
+        const setBoldHeaders = (ws, data) => {
+          const range = XLSX.utils.decode_range(ws['!ref']);
+          for (let R = range.s.r; R <= range.e.r; ++R) {
+            // Applica bold se la riga sembra un header (tutto maiuscolo o prima riga di sezione)
+            const firstCell = ws[XLSX.utils.encode_cell({ r: R, c: 0 })];
+            if (firstCell && firstCell.v && typeof firstCell.v === 'string' && (firstCell.v === firstCell.v.toUpperCase() || data[R][0] === 'Name' || data[R][0] === 'Type')) {
+              for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws[cellRef]) continue;
+                if (!ws[cellRef].s) ws[cellRef].s = {};
+                ws[cellRef].s.font = { bold: true };
+              }
+            }
+          }
+        };
+
+        // 1. Foglio WNFI (When New Form Instance)
+        if (currentData.whenNewFormInstance.length > 0) {
+          const wnfiRows = [];
+          wnfiRows.push(['WHEN NEW FORM INSTANCE']);
+          wnfiRows.push(['Action Refs', currentData.whenNewFormInstance.join(', ')]);
+          wnfiRows.push([]);
+
+          if (currentData.whenNewFormInstanceGroovy.length > 0) {
+            wnfiRows.push(['SCRIPTS']);
+            wnfiRows.push(['Action', 'Type', 'Class', 'Code']);
+            currentData.whenNewFormInstanceGroovy.forEach((action) => {
+              action.scripts.forEach((s) => {
+                wnfiRows.push([action.actionName, 'Groovy', s.className, s.script]);
+              });
+              action.sql.forEach((s) => {
+                wnfiRows.push([action.actionName, 'SQL', s.className, s.sql]);
+              });
+            });
+          }
+
+          const wsWNFI = XLSX.utils.aoa_to_sheet(wnfiRows);
+          wsWNFI['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 30 }, { wch: 80 }];
+          setBoldHeaders(wsWNFI, wnfiRows);
+          XLSX.utils.book_append_sheet(wb, wsWNFI, 'WNFI');
+        }
+
+        // 2. Fogli per ogni Grid
+        currentData.grids.forEach((grid) => {
+          const rows = [];
+
+          // Header Info
+          rows.push(['GRID INFO']);
+          rows.push(['Name', grid.name]);
+          rows.push(['Label', grid.label]);
+          rows.push(['Tab', grid.tab ? `${grid.tab.label} (${grid.tab.name})` : '']);
+          rows.push(['Permissions', `I:${grid.insertAllowed} U:${grid.updateAllowed} D:${grid.deleteAllowed}`]);
+          rows.push([]); // Spacer
+
+          // Templates
+          if (Object.keys(grid.templates).length > 0) {
+            rows.push(['TEMPLATES']);
+            rows.push(['Name', 'Code']);
+            Object.entries(grid.templates).forEach(([name, code]) => {
+              rows.push([name, code]);
+            });
+            rows.push([]);
+          }
+
+          // RPC Expand
+          if (grid.rpcExpand) {
+            rows.push(['RPC EXPAND']);
+            rows.push(['Code', grid.rpcExpand]);
+            if (grid.rpcExpandInitOrderBy) rows.push(['Init Order By', grid.rpcExpandInitOrderBy]);
+            rows.push([]);
+          }
+
+          // LOVs
+          if (grid.listOfValues.length > 0) {
+            rows.push(['LIST OF VALUES']);
+            rows.push(['Name', 'Label', 'Value (SQL)', 'Init Order By']);
+            grid.listOfValues.forEach((lov) => {
+              rows.push([lov.name, lov.label, lov.value, lov.initOrderBy]);
+            });
+            rows.push([]);
+          }
+
+          // Combos
+          if (grid.comboboxes.length > 0) {
+            rows.push(['COMBOBOXES']);
+            rows.push(['Name', 'Label', 'SQL/Rows']);
+            grid.comboboxes.forEach((combo) => {
+              const val = combo.sqlValue || combo.rows.map((r) => `${r.id}:${r.label}`).join('; ');
+              rows.push([combo.name, combo.label, val]);
+            });
+            rows.push([]);
+          }
+
+          // Events
+          if (grid.events.length > 0) {
+            rows.push(['EVENTS']);
+            rows.push(['Event Name', 'Waiting Window', 'Action Refs', 'Scripts']);
+            grid.events.forEach((evt) => {
+              const scripts = evt.groovyScripts.map((s) => s.scripts.map((sc) => `[Groovy] ${sc.script}`).join('\n') + s.sql.map((sq) => `[SQL] ${sq.sql}`).join('\n')).join('\n---\n');
+              rows.push([evt.name, evt.waitingWindow, evt.actionRefs.join(', '), scripts]);
+            });
+            rows.push([]);
+          }
+
+          // Buttons
+          if (grid.bottomToolbarButtons.length > 0) {
+            rows.push(['BUTTONS']);
+            rows.push(['Type', 'Name', 'Label', 'CallForm', 'Action Refs', 'Scripts']);
+            grid.bottomToolbarButtons.forEach((btn) => {
+              const scripts = btn.groovyScripts.map((s) => s.scripts.map((sc) => `[Groovy] ${sc.script}`).join('\n') + s.sql.map((sq) => `[SQL] ${sq.sql}`).join('\n')).join('\n---\n');
+              rows.push([btn.type, btn.name, btn.label, btn.callFormName, btn.actionRef.join(', '), scripts]);
+            });
+            rows.push([]);
+          }
+
+          const ws = XLSX.utils.aoa_to_sheet(rows);
+
+          setBoldHeaders(ws, rows);
+          // Imposta larghezza colonne
+          ws['!cols'] = [{ wch: 20 }, { wch: 30 }, { wch: 50 }, { wch: 50 }, { wch: 30 }, { wch: 50 }];
+
+          // Nome foglio (max 31 caratteri e univoco)
+          let sheetName = grid.name.replace(/[\[\]\*\/\\\?]/g, '');
+          if (sheetName.length > 31) sheetName = sheetName.substring(0, 31);
+
+          if (wb.SheetNames.includes(sheetName)) {
+            let counter = 1;
+            while (wb.SheetNames.includes(`${sheetName.substring(0, 28)}_${counter}`)) {
+              counter++;
+            }
+            sheetName = `${sheetName.substring(0, 28)}_${counter}`;
+          }
+
+          XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        });
+
+        XLSX.writeFile(wb, 'JBWT_Detailed_Export.xlsx');
+      }
+
+      function renderSection(title, key, count, content) {
+        const displayTitle = count !== undefined ? `${title} (${count})` : title;
+        return `
+                <div class="section">
+                    <button class="section-header" onclick="toggleSection('${key}')">
+                        <span>${displayTitle}</span>
+                        <span data-icon="${key}">▶</span>
+                    </button>
+                    <div class="section-content" data-section="${key}">
+                        ${content}
+                    </div>
+                </div>
+            `;
+      }
+
+      function renderCodeBlock(code, id) {
+        // Updated to use the copy SVG icon directly
+        return `
+                <div class="code-block-wrapper">
+                    <pre class="code-block">${escapeHtml(code)}</pre>
+                    <button class="copy-btn" data-copy="${id}" onclick="copyToClipboard(this, '${id}')">
+                        ${COPY_ICON}
+                    </button>
+                </div>
+            `;
+      }
+
+      function renderGroovyScripts(scripts, prefix) {
+        if (!scripts || scripts.length === 0) return '';
+
+        return scripts
+          .map(
+            (action, aIdx) => `
+                <div class="action-box mb-3">
+                    <p class="text-sm info-label mb-2">Action: ${action.actionName}</p>
+                    ${action.scripts
+                      .map(
+                        (script, sIdx) => `
+                        <div class="mb-2">
+                            <p class="text-xs text-gray mb-1">Class: ${script.className} ${script.classType ? `(${script.classType})` : ''}</p>
+                            <p class="text-xs text-gray mb-1">Type: Groovy Script</p>
+                            ${renderCodeBlock(script.script, `${prefix}-groovy-${aIdx}-${sIdx}`)}
+                        </div>
+                    `
+                      )
+                      .join('')}
+                    ${action.sql
+                      .map(
+                        (sqlItem, sIdx) => `
+                        <div class="mb-2">
+                            <p class="text-xs text-gray mb-1">Class: ${sqlItem.className} ${sqlItem.classType ? `(${sqlItem.classType})` : ''}</p>
+                            <p class="text-xs text-gray mb-1">Type: SQL ${sqlItem.function ? `| Function: ${sqlItem.function}` : ''}</p>
+                            ${renderCodeBlock(sqlItem.sql, `${prefix}-sql-${aIdx}-${sIdx}`)}
+                        </div>
+                    `
+                      )
+                      .join('')}
+                </div>
+            `
+          )
+          .join('');
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      loadDefaultXML();
+    </script>
+  </body>
+</html>
