@@ -158,7 +158,7 @@ function parseXML(xmlText) {
       const rpcExpandValue = rpcExpandTag.querySelector('paginatedExpand > value') || rpcExpandTag.querySelector('expand > value') || rpcExpandTag.querySelector('value');
 
       if (rpcExpandValue) {
-        gridData.rpcExpand = replaceTemplates(rpcExpandValue.textContent.trim(), gridData.templates);
+        gridData.rpcExpand = rpcExpandValue.textContent.trim();
       }
 
       const initOrderBy = rpcExpandTag.querySelector('paginatedExpand > initOrderBy');
@@ -171,7 +171,7 @@ function parseXML(xmlText) {
     if (rpcExpandInitTag) {
       const rpcExpandInitValue = rpcExpandInitTag.querySelector('expand > value');
       if (rpcExpandInitValue) {
-        gridData.rpcExpandInit = replaceTemplates(rpcExpandInitValue.textContent.trim(), gridData.templates);
+        gridData.rpcExpandInit = rpcExpandInitValue.textContent.trim();
       }
     }
 
@@ -206,7 +206,7 @@ function parseXML(xmlText) {
       };
       const lovValue = lov.querySelector('rpcExpand > paginatedExpand > value, rpcExpand > expand > value');
       if (lovValue) {
-        lovData.value = replaceTemplates(lovValue.textContent.trim(), gridData.templates);
+        lovData.value = lovValue.textContent.trim();
       }
       const lovInitOrderBy = lov.querySelector('rpcExpand > paginatedExpand > initOrderBy');
       if (lovInitOrderBy) {
@@ -235,7 +235,7 @@ function parseXML(xmlText) {
 
       const sqlValue = combo.querySelector('rpcExpand > expand > value');
       if (sqlValue) {
-        comboData.sqlValue = replaceTemplates(sqlValue.textContent.trim(), gridData.templates);
+        comboData.sqlValue = sqlValue.textContent.trim();
       }
 
       gridData.comboboxes.push(comboData);
@@ -247,7 +247,7 @@ function parseXML(xmlText) {
       ['insert', 'update', 'delete'].forEach((op) => {
         const lists = checkAndSave.querySelectorAll(`list[name="${op}"] > value`);
         lists.forEach((val) => {
-          gridData.checkAndSaveData[op].push(replaceTemplates(val.textContent.trim(), gridData.templates));
+          gridData.checkAndSaveData[op].push(val.textContent.trim());
         });
       });
     }
@@ -282,6 +282,18 @@ function parseXML(xmlText) {
           if (callFormNode) callFormName = callFormNode.textContent;
         }
 
+        const params = [];
+        const paramsList = btn.querySelector('paramsList');
+        if (paramsList) {
+          const paramNodes = paramsList.querySelectorAll('param');
+          paramNodes.forEach((p) => {
+            params.push({
+              name: p.getAttribute('name'),
+              alias: p.getAttribute('alias'),
+            });
+          });
+        }
+
         gridData.bottomToolbarButtons.push({
           type: type,
           name: btn.getAttribute('name'),
@@ -289,6 +301,7 @@ function parseXML(xmlText) {
           order: btn.getAttribute('order'),
           callFormName: callFormName,
           actionRef: actionRefs,
+          params: params,
           groovyScripts: concatenateGroovyScripts(actionRefs, actionsMap),
         });
       });
@@ -308,7 +321,7 @@ function extractAllActions(xmlDoc) {
     const actionName = action.getAttribute('name');
     if (!actionName) return;
 
-    const actionData = { scripts: [], sql: [] };
+    const actionData = { classes: [] };
     const groovyClasses = action.querySelectorAll('classes > class');
 
     groovyClasses.forEach((groovyClass) => {
@@ -317,7 +330,8 @@ function extractAllActions(xmlDoc) {
 
       const groovyParam = groovyClass.querySelector('param[name="groovy"]');
       if (groovyParam) {
-        actionData.scripts.push({
+        actionData.classes.push({
+          type: 'groovy',
           className: className,
           classType: classType,
           script: groovyParam.textContent.trim(),
@@ -326,7 +340,8 @@ function extractAllActions(xmlDoc) {
 
       const sqlParam = groovyClass.querySelector('param[name="sql"]');
       if (sqlParam) {
-        actionData.sql.push({
+        actionData.classes.push({
+          type: 'sql',
           className: className,
           classType: classType,
           sql: sqlParam.textContent.trim(),
@@ -335,7 +350,7 @@ function extractAllActions(xmlDoc) {
       }
     });
 
-    if (actionData.scripts.length > 0 || actionData.sql.length > 0) {
+    if (actionData.classes.length > 0) {
       actionsMap[actionName] = actionData;
     }
   });
@@ -379,8 +394,7 @@ function concatenateGroovyScripts(actionRefs, actionsMap) {
     if (actionsMap[actionRef]) {
       concatenated.push({
         actionName: actionRef,
-        scripts: actionsMap[actionRef].scripts || [],
-        sql: actionsMap[actionRef].sql || [],
+        classes: actionsMap[actionRef].classes || [],
       });
     }
   });
@@ -719,6 +733,24 @@ function renderData(data) {
                               <p class="text-sm mb-1"><span class="info-label">Label:</span> ${btn.label}</p>
                               <p class="text-sm mb-1"><span class="info-label">Order:</span> ${btn.order}</p>
                               ${btn.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${btn.callFormName}</p>` : ''}
+                              ${
+                                btn.params && btn.params.length > 0
+                                  ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
+                                      <p class="text-sm info-label">Parametri:</p>
+                                      <table class="table">
+                                          <thead>
+                                              <tr>
+                                                  <th>Name</th>
+                                                  <th>Alias</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                              ${btn.params.map((p) => `<tr><td>${escapeHtml(p.name || '')}</td><td>${escapeHtml(p.alias || '')}</td></tr>`).join('')}
+                                          </tbody>
+                                      </table>
+                                   </div>`
+                                  : ''
+                              }
                               <p class="text-sm mb-2"><span class="info-label">ActionRef:</span> ${btn.actionRef.join(', ') || 'Nessuno'}</p>
                               
                               ${
@@ -825,11 +857,12 @@ function downloadExcel() {
       wnfiRows.push(['SCRIPTS']);
       wnfiRows.push(['Action', 'Type', 'Class', 'Code']);
       currentData.whenNewFormInstanceGroovy.forEach((action) => {
-        action.scripts.forEach((s) => {
-          wnfiRows.push([action.actionName, 'Groovy', s.className, s.script]);
-        });
-        action.sql.forEach((s) => {
-          wnfiRows.push([action.actionName, 'SQL', s.className, s.sql]);
+        action.classes.forEach((item) => {
+          if (item.type === 'groovy') {
+            wnfiRows.push([action.actionName, 'Groovy', item.className, item.script]);
+          } else if (item.type === 'sql') {
+            wnfiRows.push([action.actionName, 'SQL', item.className, item.sql]);
+          }
         });
       });
     }
@@ -896,7 +929,17 @@ function downloadExcel() {
       rows.push(['EVENTS']);
       rows.push(['Event Name', 'Waiting Window', 'Action Refs', 'Scripts']);
       grid.events.forEach((evt) => {
-        const scripts = evt.groovyScripts.map((s) => s.scripts.map((sc) => `[Groovy] ${sc.script}`).join('\n') + s.sql.map((sq) => `[SQL] ${sq.sql}`).join('\n')).join('\n---\n');
+        const scripts = evt.groovyScripts
+          .map((action) =>
+            action.classes
+              .map((item) => {
+                if (item.type === 'groovy') return `[Groovy] ${item.script}`;
+                if (item.type === 'sql') return `[SQL] ${item.sql}`;
+                return '';
+              })
+              .join('\n')
+          )
+          .join('\n---\n');
         rows.push([evt.name, evt.waitingWindow, evt.actionRefs.join(', '), scripts]);
       });
       rows.push([]);
@@ -905,19 +948,29 @@ function downloadExcel() {
     // Buttons
     if (grid.bottomToolbarButtons.length > 0) {
       rows.push(['BUTTONS']);
-      rows.push(['Type', 'Name', 'Label', 'CallForm', 'Action Refs', 'Scripts']);
+      rows.push(['Type', 'Name', 'Label', 'CallForm', 'Params', 'Action Refs', 'Scripts']);
       grid.bottomToolbarButtons.forEach((btn) => {
-        const scripts = btn.groovyScripts.map((s) => s.scripts.map((sc) => `[Groovy] ${sc.script}`).join('\n') + s.sql.map((sq) => `[SQL] ${sq.sql}`).join('\n')).join('\n---\n');
-        rows.push([btn.type, btn.name, btn.label, btn.callFormName, btn.actionRef.join(', '), scripts]);
+        const scripts = btn.groovyScripts
+          .map((action) =>
+            action.classes
+              .map((item) => {
+                if (item.type === 'groovy') return `[Groovy] ${item.script}`;
+                if (item.type === 'sql') return `[SQL] ${item.sql}`;
+                return '';
+              })
+              .join('\n')
+          )
+          .join('\n---\n');
+        const params = (btn.params || []).map((p) => `${p.name || ''}${p.alias ? ` (${p.alias})` : ''}`).join('\n');
+        rows.push([btn.type, btn.name, btn.label, btn.callFormName, params, btn.actionRef.join(', '), scripts]);
       });
       rows.push([]);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
 
-    setBoldHeaders(ws, rows);
-    // Imposta larghezza colonne
-    ws['!cols'] = [{ wch: 20 }, { wch: 30 }, { wch: 50 }, { wch: 50 }, { wch: 30 }, { wch: 50 }];
+    setBoldHeaders(ws, rows); // Imposta larghezza colonne
+    ws['!cols'] = [{ wch: 20 }, { wch: 30 }, { wch: 50 }, { wch: 30 }, { wch: 40 }, { wch: 30 }, { wch: 50 }];
 
     // Nome foglio (max 31 caratteri e univoco)
     let sheetName = grid.name.replace(/[\[\]\*\/\\\?]/g, '');
@@ -972,27 +1025,28 @@ function renderGroovyScripts(scripts, prefix) {
       (action, aIdx) => `
           <div class="action-box mb-3">
               <p class="text-sm info-label mb-2">Action: ${action.actionName}</p>
-              ${action.scripts
-                .map(
-                  (script, sIdx) => `
-                  <div class="mb-2">
-                      <p class="text-xs text-gray mb-1">Class: ${script.className} ${script.classType ? `(${script.classType})` : ''}</p>
-                      <p class="text-xs text-gray mb-1">Type: Groovy Script</p>
-                      ${renderCodeBlock(script.script, `${prefix}-groovy-${aIdx}-${sIdx}`, 'groovy')}
-                  </div>
-              `
-                )
-                .join('')}
-              ${action.sql
-                .map(
-                  (sqlItem, sIdx) => `
-                  <div class="mb-2">
-                      <p class="text-xs text-gray mb-1">Class: ${sqlItem.className} ${sqlItem.classType ? `(${sqlItem.classType})` : ''}</p>
-                      <p class="text-xs text-gray mb-1">Type: SQL ${sqlItem.function ? `| Function: ${sqlItem.function}` : ''}</p>
-                      ${renderCodeBlock(sqlItem.sql, `${prefix}-sql-${aIdx}-${sIdx}`, 'sql')}
-                  </div>
-              `
-                )
+              ${action.classes
+                .map((item, cIdx) => {
+                  if (item.type === 'groovy') {
+                    return `
+                      <div class="mb-2">
+                          <p class="text-xs text-gray mb-1">Class: ${item.className} ${item.classType ? `(${item.classType})` : ''}</p>
+                          <p class="text-xs text-gray mb-1">Type: Groovy Script</p>
+                          ${renderCodeBlock(item.script, `${prefix}-groovy-${aIdx}-${cIdx}`, 'groovy')}
+                      </div>
+                    `;
+                  }
+                  if (item.type === 'sql') {
+                    return `
+                      <div class="mb-2">
+                          <p class="text-xs text-gray mb-1">Class: ${item.className} ${item.classType ? `(${item.classType})` : ''}</p>
+                          <p class="text-xs text-gray mb-1">Type: SQL ${item.function ? `| Function: ${item.function}` : ''}</p>
+                          ${renderCodeBlock(item.sql, `${prefix}-sql-${aIdx}-${cIdx}`, 'sql')}
+                      </div>
+                    `;
+                  }
+                  return '';
+                })
                 .join('')}
           </div>
       `
@@ -1000,7 +1054,7 @@ function renderGroovyScripts(scripts, prefix) {
     .join('');
 
   // Calcola il numero totale di blocchi di codice
-  const totalBlocks = scripts.reduce((acc, curr) => acc + curr.scripts.length + curr.sql.length, 0);
+  const totalBlocks = scripts.reduce((acc, curr) => acc + (curr.classes ? curr.classes.length : 0), 0);
 
   if (totalBlocks > 1) {
     return `
