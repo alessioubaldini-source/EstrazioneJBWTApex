@@ -91,11 +91,33 @@ function parseXML(xmlText) {
 
   const popups = xmlDoc.querySelectorAll('form > popups > popup');
   popups.forEach((popup) => {
+    let callFormName = null;
+    const params = [];
+
+    const callFormPopup = popup.getElementsByTagName('callFormPopup')[0];
+    if (callFormPopup) {
+      const nameNode = callFormPopup.getElementsByTagName('callFormName')[0];
+      if (nameNode) callFormName = nameNode.textContent.trim();
+
+      const paramsList = callFormPopup.getElementsByTagName('paramsList')[0];
+      if (paramsList) {
+        const paramNodes = paramsList.querySelectorAll('param');
+        paramNodes.forEach((p) => {
+          params.push({
+            name: p.getAttribute('name'),
+            alias: p.getAttribute('alias'),
+          });
+        });
+      }
+    }
+
     const popupData = {
       name: popup.getAttribute('name'),
       title: popup.getAttribute('title'),
       width: popup.getAttribute('width'),
       height: popup.getAttribute('height'),
+      callFormName: callFormName,
+      params: params,
       grids: [],
     };
     const popupGrids = popup.querySelectorAll('grids > grid');
@@ -114,6 +136,7 @@ function parseXML(xmlText) {
     const gridData = {
       name: grid.getAttribute('name'),
       label: grid.getAttribute('label'),
+      type: grid.getAttribute('type'),
       ref: grid.getAttribute('ref'),
       insertAllowed: insertAttr !== null ? insertAttr : 'true',
       updateAllowed: updateAttr !== null ? updateAttr : 'true',
@@ -175,26 +198,16 @@ function parseXML(xmlText) {
       }
     }
 
-    const eventsNode = getDirectChild(grid, 'events');
-    if (eventsNode) {
-      Array.from(eventsNode.children).forEach((evt) => {
-        const evtName = evt.nodeName;
-        const actionRefAttr = evt.getAttribute('actionRef');
-        const waitingWindow = evt.getAttribute('waitingWindow');
+    // Estrazione Eventi Grid
+    gridData.events = extractEventsFromNode(grid, actionsMap);
 
-        let actionRefs = [];
-        if (actionRefAttr) {
-          actionRefs = actionRefAttr.split(',').map((a) => a.trim());
-        }
-
-        gridData.events.push({
-          name: evtName,
-          waitingWindow: waitingWindow,
-          actionRefs: actionRefs,
-          groovyScripts: concatenateGroovyScripts(actionRefs, actionsMap),
-        });
-      });
-    }
+    // Estrazione Eventi Fields (es. whenFinishEditValue)
+    const allFields = grid.querySelectorAll('fields > *');
+    allFields.forEach((field) => {
+      const fName = field.getAttribute('name');
+      const fEvents = extractEventsFromNode(field, actionsMap, fName);
+      gridData.events.push(...fEvents);
+    });
 
     const lovs = grid.querySelectorAll('fields > listOfValue');
     lovs.forEach((lov) => {
@@ -313,6 +326,32 @@ function parseXML(xmlText) {
   return result;
 }
 
+function extractEventsFromNode(node, actionsMap, context = null) {
+  const events = [];
+  const eventsNode = getDirectChild(node, 'events');
+  if (eventsNode) {
+    Array.from(eventsNode.children).forEach((evt) => {
+      const evtName = evt.nodeName;
+      const actionRefAttr = evt.getAttribute('actionRef');
+      const waitingWindow = evt.getAttribute('waitingWindow');
+
+      let actionRefs = [];
+      if (actionRefAttr) {
+        actionRefs = actionRefAttr.split(',').map((a) => a.trim());
+      }
+
+      events.push({
+        name: evtName,
+        waitingWindow: waitingWindow,
+        actionRefs: actionRefs,
+        groovyScripts: concatenateGroovyScripts(actionRefs, actionsMap),
+        context: context, // Nome del campo se è un evento di campo
+      });
+    });
+  }
+  return events;
+}
+
 function extractAllActions(xmlDoc) {
   const actionsMap = {};
   const actions = xmlDoc.querySelectorAll('action');
@@ -327,6 +366,7 @@ function extractAllActions(xmlDoc) {
     groovyClasses.forEach((groovyClass) => {
       const className = groovyClass.getAttribute('name');
       const classType = groovyClass.getAttribute('class');
+      const failMessage = groovyClass.querySelector('param[name="failMessage"]')?.textContent.trim() || null;
 
       const groovyParam = groovyClass.querySelector('param[name="groovy"]');
       if (groovyParam) {
@@ -334,6 +374,7 @@ function extractAllActions(xmlDoc) {
           type: 'groovy',
           className: className,
           classType: classType,
+          failMessage: failMessage,
           script: groovyParam.textContent.trim(),
         });
       }
@@ -344,6 +385,7 @@ function extractAllActions(xmlDoc) {
           type: 'sql',
           className: className,
           classType: classType,
+          failMessage: failMessage,
           sql: sqlParam.textContent.trim(),
           function: groovyClass.querySelector('param[name="function"]')?.textContent.trim() || '',
         });
@@ -477,6 +519,25 @@ function renderData(data) {
                       <div class="popup-card">
                           <h3 class="info-label text-lg mb-2" style="font-size: 1.125rem; color: #c2410c;">${popup.name}</h3>
                           <p class="text-sm mb-1"><span class="info-label">Title:</span> ${popup.title || 'N/A'}</p>
+                          ${popup.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${popup.callFormName}</p>` : ''}
+                          ${
+                            popup.params && popup.params.length > 0
+                              ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
+                                  <p class="text-sm info-label">Parametri:</p>
+                                  <table class="table">
+                                      <thead>
+                                          <tr>
+                                              <th>Name</th>
+                                              <th>Alias</th>
+                                          </tr>
+                                      </thead>
+                                      <tbody>
+                                          ${popup.params.map((p) => `<tr><td>${escapeHtml(p.name || '')}</td><td>${escapeHtml(p.alias || '')}</td></tr>`).join('')}
+                                      </tbody>
+                                  </table>
+                               </div>`
+                              : ''
+                          }
                           <p class="text-sm mb-1"><span class="info-label">Dimensioni:</span> ${popup.width} x ${popup.height}</p>
                           <p class="text-sm mb-1">
                               <span class="info-label">Grids:</span> 
@@ -509,6 +570,13 @@ function renderData(data) {
   data.grids.forEach((grid, idx) => {
     const hasTemplates = Object.keys(grid.templates).length > 0;
 
+    // Raggruppamento Eventi
+    const evAbilitazioni = grid.events.filter((e) => ['whennewforminstance', 'whennewrecordinstance', 'whenrecordfetched'].includes(e.name.toLowerCase()));
+
+    const evControlli = grid.events.filter((e) => ['whenexitchangedrecord', 'whenfinisheditvalue'].includes(e.name.toLowerCase()));
+
+    const evAltri = grid.events.filter((e) => !evAbilitazioni.includes(e) && !evControlli.includes(e));
+
     // Determina posizione (Tab o Popup)
     let locationInfo = '';
     if (grid.tab) {
@@ -530,6 +598,7 @@ function renderData(data) {
                       ${grid.label ? `<p class="text-sm text-gray"><span class="info-label">Label:</span> ${grid.label}</p>` : ''}
                       <div class="badge-container">
                           ${grid.tab ? `<span class="badge badge-purple"><span class="info-label">Tab:</span> ${grid.tab.label} (${grid.tab.name})</span>` : ''}
+                          ${grid.type ? `<span class="badge badge-blue"><span class="info-label">Type:</span> ${grid.type}</span>` : ''}
                           ${grid.ref ? `<span class="badge badge-gray"><span class="info-label">Ref:</span> ${grid.ref}</span>` : ''}
                           <span class="badge ${grid.insertAllowed === 'true' ? 'badge-green' : 'badge-red'}"><span class="info-label">Insert:</span> ${grid.insertAllowed}</span>
                           <span class="badge ${grid.updateAllowed === 'true' ? 'badge-green' : 'badge-red'}"><span class="info-label">Update:</span> ${grid.updateAllowed}</span>
@@ -700,24 +769,15 @@ function renderData(data) {
                   )}
 
                   ${renderSection(
-                    'Events',
-                    `events-${idx}`,
-                    grid.events.length,
-                    grid.events.length > 0
-                      ? grid.events
-                          .map(
-                            (evt, eIdx) => `
-                          <div class="mb-3" style="border-left: 3px solid #6366f1; padding-left: 12px;">
-                              <h4 class="info-label mb-1 text-indigo-700">${evt.name}</h4>
-                              ${evt.waitingWindow ? `<span class="badge badge-yellow text-xs mb-2">Waiting Window</span>` : ''}
-                              <p class="text-xs mb-2 mt-1"><span class="info-label">Action Refs:</span> ${evt.actionRefs.join(', ') || 'Nessuna'}</p>
-                              ${renderGroovyScripts(evt.groovyScripts, `evt-${idx}-${eIdx}`)}
-                          </div>
-                      `
-                          )
-                          .join('')
-                      : '<p class="text-gray">Nessun evento</p>'
+                    'Abilitazioni',
+                    `events-abil-${idx}`,
+                    evAbilitazioni.length,
+                    evAbilitazioni.length > 0 ? evAbilitazioni.map((evt, eIdx) => renderEventBlock(evt, idx, `abil-${eIdx}`)).join('') : '<p class="text-gray">Nessun evento di abilitazione</p>'
                   )}
+
+                  ${renderSection('Controlli', `events-ctrl-${idx}`, evControlli.length, evControlli.length > 0 ? evControlli.map((evt, eIdx) => renderEventBlock(evt, idx, `ctrl-${eIdx}`)).join('') : '<p class="text-gray">Nessun controllo</p>')}
+
+                  ${renderSection('Altri Eventi', `events-other-${idx}`, evAltri.length, evAltri.length > 0 ? evAltri.map((evt, eIdx) => renderEventBlock(evt, idx, `other-${eIdx}`)).join('') : '<p class="text-gray">Nessun altro evento</p>')}
 
                   ${renderSection(
                     'Bottom Toolbar Buttons',
@@ -855,20 +915,20 @@ function downloadExcel() {
 
     if (currentData.whenNewFormInstanceGroovy.length > 0) {
       wnfiRows.push(['SCRIPTS']);
-      wnfiRows.push(['Action', 'Type', 'Class', 'Code']);
+      wnfiRows.push(['Action', 'Type', 'Class', 'Fail Msg', 'Code']);
       currentData.whenNewFormInstanceGroovy.forEach((action) => {
         action.classes.forEach((item) => {
           if (item.type === 'groovy') {
-            wnfiRows.push([action.actionName, 'Groovy', item.className, item.script]);
+            wnfiRows.push([action.actionName, 'Groovy', item.className, item.failMessage || '', item.script]);
           } else if (item.type === 'sql') {
-            wnfiRows.push([action.actionName, 'SQL', item.className, item.sql]);
+            wnfiRows.push([action.actionName, 'SQL', item.className, item.failMessage || '', item.sql]);
           }
         });
       });
     }
 
     const wsWNFI = XLSX.utils.aoa_to_sheet(wnfiRows);
-    wsWNFI['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 30 }, { wch: 80 }];
+    wsWNFI['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 80 }];
     setBoldHeaders(wsWNFI, wnfiRows);
     XLSX.utils.book_append_sheet(wb, wsWNFI, 'WNFI');
   }
@@ -880,6 +940,7 @@ function downloadExcel() {
     // Header Info
     rows.push(['GRID INFO']);
     rows.push(['Name', grid.name]);
+    rows.push(['Type', grid.type || '']);
     rows.push(['Label', grid.label]);
     rows.push(['Tab', grid.tab ? `${grid.tab.label} (${grid.tab.name})` : '']);
     rows.push(['Permissions', `I:${grid.insertAllowed} U:${grid.updateAllowed} D:${grid.deleteAllowed}`]);
@@ -940,7 +1001,8 @@ function downloadExcel() {
               .join('\n')
           )
           .join('\n---\n');
-        rows.push([evt.name, evt.waitingWindow, evt.actionRefs.join(', '), scripts]);
+        const nameWithContext = evt.name + (evt.context ? ` (${evt.context})` : '');
+        rows.push([nameWithContext, evt.waitingWindow, evt.actionRefs.join(', '), scripts]);
       });
       rows.push([]);
     }
@@ -1005,6 +1067,17 @@ function renderSection(title, key, count, content) {
       `;
 }
 
+function renderEventBlock(evt, gridIdx, uniqueSuffix) {
+  return `
+      <div class="mb-3" style="border-left: 3px solid #6366f1; padding-left: 12px;">
+          <h4 class="info-label mb-1 text-indigo-700">${evt.name} ${evt.context ? `<span class="text-xs text-gray" style="font-weight:normal;">(Field: ${evt.context})</span>` : ''}</h4>
+          ${evt.waitingWindow ? `<span class="badge badge-yellow text-xs mb-2">Waiting Window</span>` : ''}
+          <p class="text-xs mb-2 mt-1"><span class="info-label">Action Refs:</span> ${evt.actionRefs.join(', ') || 'Nessuna'}</p>
+          ${renderGroovyScripts(evt.groovyScripts, `evt-${gridIdx}-${uniqueSuffix}`)}
+      </div>
+  `;
+}
+
 function renderCodeBlock(code, id, lang = 'sql') {
   // Updated to use the copy SVG icon directly
   return `
@@ -1032,6 +1105,7 @@ function renderGroovyScripts(scripts, prefix) {
                       <div class="mb-2">
                           <p class="text-xs text-gray mb-1">Class: ${item.className} ${item.classType ? `(${item.classType})` : ''}</p>
                           <p class="text-xs text-gray mb-1">Type: Groovy Script</p>
+                          ${item.failMessage ? `<p class="text-xs text-red mb-1"><span class="info-label">Fail Message:</span> ${item.failMessage}</p>` : ''}
                           ${renderCodeBlock(item.script, `${prefix}-groovy-${aIdx}-${cIdx}`, 'groovy')}
                       </div>
                     `;
@@ -1041,6 +1115,7 @@ function renderGroovyScripts(scripts, prefix) {
                       <div class="mb-2">
                           <p class="text-xs text-gray mb-1">Class: ${item.className} ${item.classType ? `(${item.classType})` : ''}</p>
                           <p class="text-xs text-gray mb-1">Type: SQL ${item.function ? `| Function: ${item.function}` : ''}</p>
+                          ${item.failMessage ? `<p class="text-xs text-red mb-1"><span class="info-label">Fail Message:</span> ${item.failMessage}</p>` : ''}
                           ${renderCodeBlock(item.sql, `${prefix}-sql-${aIdx}-${cIdx}`, 'sql')}
                       </div>
                     `;

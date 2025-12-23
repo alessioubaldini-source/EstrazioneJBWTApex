@@ -297,6 +297,9 @@ h1 {
 .text-xs {
   font-size: 12px;
 }
+.text-red {
+  color: #991b1b;
+}
 .mb-1 {
   margin-bottom: 4px;
 }
