@@ -133,21 +133,33 @@ function parseXML(xmlText) {
     const updateAttr = grid.getAttribute('updateAllowed');
     const deleteAttr = grid.getAttribute('deleteAllowed');
 
+    let parsedCheckAndSaveData = null;
+    const checkAndSave = grid.querySelector('action[name="save"] class[class="CheckAndSaveData"]');
+    if (checkAndSave) {
+      parsedCheckAndSaveData = { insert: [], update: [], delete: [] };
+      ['insert', 'update', 'delete'].forEach((op) => {
+        const lists = checkAndSave.querySelectorAll(`list[name="${op}"] > value`);
+        lists.forEach((val) => {
+          parsedCheckAndSaveData[op].push(val.textContent.trim());
+        });
+      });
+    }
+
     const gridData = {
       name: grid.getAttribute('name'),
       label: grid.getAttribute('label'),
       type: grid.getAttribute('type'),
       ref: grid.getAttribute('ref'),
-      insertAllowed: insertAttr !== null ? insertAttr : 'true',
-      updateAllowed: updateAttr !== null ? updateAttr : 'true',
-      deleteAllowed: deleteAttr !== null ? deleteAttr : 'true',
+      insertAllowed: insertAttr !== null ? insertAttr : parsedCheckAndSaveData && parsedCheckAndSaveData.insert.length > 0 ? 'true' : 'false',
+      updateAllowed: updateAttr !== null ? updateAttr : parsedCheckAndSaveData && parsedCheckAndSaveData.update.length > 0 ? 'true' : 'false',
+      deleteAllowed: deleteAttr !== null ? deleteAttr : parsedCheckAndSaveData && parsedCheckAndSaveData.delete.length > 0 ? 'true' : 'false',
       tab: findParentTab(grid),
       rpcExpand: null,
       rpcExpandInitOrderBy: null,
       rpcExpandInit: null,
       listOfValues: [],
       comboboxes: [],
-      checkAndSaveData: null,
+      checkAndSaveData: parsedCheckAndSaveData,
       beforeCommitValidation: [],
       events: [],
       bottomToolbarButtons: [],
@@ -253,17 +265,6 @@ function parseXML(xmlText) {
 
       gridData.comboboxes.push(comboData);
     });
-
-    const checkAndSave = grid.querySelector('action[name="save"] class[class="CheckAndSaveData"]');
-    if (checkAndSave) {
-      gridData.checkAndSaveData = { insert: [], update: [], delete: [] };
-      ['insert', 'update', 'delete'].forEach((op) => {
-        const lists = checkAndSave.querySelectorAll(`list[name="${op}"] > value`);
-        lists.forEach((val) => {
-          gridData.checkAndSaveData[op].push(val.textContent.trim());
-        });
-      });
-    }
 
     const beforeCommit = grid.querySelectorAll('beforeCommitValidation');
     beforeCommit.forEach((bc) => {
