@@ -6,6 +6,9 @@
     <title>Estrazione XML JBWT</title>
     <!-- SheetJS per Export Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- Docx & FileSaver per Export Word -->
+    <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <!-- PrismJS per Syntax Highlighting -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
@@ -30,6 +33,7 @@
         <div class="controls-container">
           <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cerca grid per nome..." disabled />
           <button id="downloadBtn" class="download-btn" onclick="downloadExcel()" disabled>📊 Scarica Excel</button>
+          <button id="downloadWordBtn" class="download-word-btn" onclick="downloadWord()" disabled>📝 Scarica Word</button>
         </div>
 
         <div id="loading" class="loading hidden">Caricamento file XML in corso...</div>

@@ -493,6 +493,7 @@ function renderData(data) {
   currentData = data; // Salva i dati globalmente
   document.getElementById('searchInput').disabled = false;
   document.getElementById('downloadBtn').disabled = false;
+  document.getElementById('downloadWordBtn').disabled = false;
 
   const content = document.getElementById('content');
   const sidebar = document.getElementById('sidebar');
@@ -581,16 +582,36 @@ function renderData(data) {
     // Determina posizione (Tab o Popup)
     let locationInfo = '';
     if (grid.tab) {
-      locationInfo = `<div class="text-xs" style="margin-left: 22px; color: #6b21a8;">Tab: ${grid.tab.label || grid.tab.name}</div>`;
+      locationInfo = `<div class="sidebar-grid-location is-tab">Tab: ${grid.tab.label || grid.tab.name}</div>`;
     } else {
       const popup = data.popups.find((p) => p.grids.includes(grid.name));
       if (popup) {
-        locationInfo = `<div class="text-xs" style="margin-left: 22px; color: #c2410c;">Popup: ${popup.name}</div>`;
+        locationInfo = `<div class="sidebar-grid-location is-popup">Popup: ${popup.name}</div>`;
       }
     }
 
+    // Crea badges riepilogativi per la sidebar
+    let summaryBadgesHtml = '';
+    const summaryItems = [];
+    if (evAbilitazioni.length > 0) {
+      summaryItems.push(`<span class="summary-badge sb-abil" title="Abilitazioni">Abil (${evAbilitazioni.length})</span>`);
+    }
+    if (evControlli.length > 0) {
+      summaryItems.push(`<span class="summary-badge sb-ctrl" title="Controlli">Ctrl (${evControlli.length})</span>`);
+    }
+    if (grid.listOfValues.length > 0) {
+      summaryItems.push(`<span class="summary-badge sb-lov" title="List Of Values">LOV (${grid.listOfValues.length})</span>`);
+    }
+    if (grid.comboboxes.length > 0) {
+      summaryItems.push(`<span class="summary-badge sb-combo" title="Combobox">Combo (${grid.comboboxes.length})</span>`);
+    }
+
+    if (summaryItems.length > 0) {
+      summaryBadgesHtml = `<div class="sidebar-summary">${summaryItems.join('')}</div>`;
+    }
+
     // Aggiungi voce alla sidebar
-    sidebarHtml += `<li><a href="#grid-${grid.name}"><div>📄 ${grid.name} ${grid.label ? `<span class="text-xs text-gray">(${grid.label})</span>` : ''}</div>${locationInfo}</a></li>`;
+    sidebarHtml += `<li><a href="#grid-${grid.name}"><div>📄 ${grid.name} ${grid.label ? `<span class="text-xs text-gray">(${grid.label})</span>` : ''}</div>${locationInfo}${summaryBadgesHtml}</a></li>`;
 
     html += `
               <div class="grid-card" id="grid-${grid.name}" data-grid-name="${grid.name.toLowerCase()}">
@@ -1051,6 +1072,305 @@ function downloadExcel() {
   });
 
   XLSX.writeFile(wb, 'JBWT_Detailed_Export.xlsx');
+}
+
+// Funzione Export Word
+async function downloadWord() {
+  if (!currentData || !window.docx) return;
+
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, ShadingType } = window.docx;
+
+  // --- HELPERS STILE ---
+
+  // Helper generico per celle
+  const createCell = (text, opts = {}) => {
+    const { bold = false, width = null, bg = null, color = '000000', size = 22 } = opts;
+    return new TableCell({
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text: text || '', bold: bold, size: size, color: color })],
+          spacing: { before: 60, after: 60 }, // Padding verticale
+        }),
+      ],
+      width: width ? { size: width, type: WidthType.PERCENTAGE } : undefined,
+      shading: bg ? { fill: bg, type: ShadingType.CLEAR } : undefined,
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+        left: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+        right: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+      },
+      margins: { top: 80, bottom: 80, left: 80, right: 80 },
+    });
+  };
+
+  // Cella per Etichette (es. "Nome:", "Tipo:") - Sfondo grigio chiaro, testo scuro
+  const createLabelCell = (text, width = null) => createCell(text, { bold: true, width, bg: 'F3F4F6', color: '374151' });
+
+  // Cella per Valori - Sfondo bianco
+  const createValueCell = (text, width = null) => createCell(text, { width, color: '111827' });
+
+  // Cella per Intestazioni Tabelle (es. "ID", "Label") - Sfondo più scuro
+  const createHeaderCell = (text, width = null) => createCell(text, { bold: true, width, bg: 'E5E7EB', color: '000000' });
+
+  // Helper per blocchi di codice
+  const createCodeBlock = (code) => {
+    if (!code) return new Paragraph('');
+    return new Paragraph({
+      children: [
+        new TextRun({
+          text: code,
+          font: 'Courier New',
+          size: 18, // 9pt
+          color: '1F2937',
+        }),
+      ],
+      spacing: { before: 120, after: 120 },
+      border: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: 'E5E7EB' },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: 'E5E7EB' },
+        left: { style: BorderStyle.SINGLE, size: 1, color: 'E5E7EB' },
+        right: { style: BorderStyle.SINGLE, size: 1, color: 'E5E7EB' },
+      },
+      shading: { fill: 'F9FAFB', type: ShadingType.CLEAR },
+      indent: { left: 100, right: 100 },
+    });
+  };
+
+  const docChildren = [];
+
+  // --- TITOLO ---
+  docChildren.push(
+    new Paragraph({
+      text: 'Estrazione XML JBWT',
+      heading: HeadingLevel.HEADING_1,
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 400 }, // Spazio gestito dallo stile globale, ma questo è extra
+    })
+  );
+
+  if (currentData.description) {
+    docChildren.push(
+      new Paragraph({
+        children: [new TextRun({ text: 'Descrizione: ', bold: true, size: 24 }), new TextRun({ text: currentData.description, size: 24 })],
+        spacing: { after: 300 },
+        border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2563EB' } }, // Bordo blu a sinistra
+        indent: { left: 200 },
+      })
+    );
+  }
+
+  // --- POPUPS ---
+  if (currentData.popups && currentData.popups.length > 0) {
+    docChildren.push(new Paragraph({ text: 'Popups', heading: HeadingLevel.HEADING_1 }));
+
+    currentData.popups.forEach((popup) => {
+      docChildren.push(new Paragraph({ text: popup.name, heading: HeadingLevel.HEADING_2 }));
+
+      const rows = [
+        new TableRow({ children: [createLabelCell('Title', 30), createValueCell(popup.title || 'N/A', 70)] }),
+        new TableRow({ children: [createLabelCell('CallForm', 30), createValueCell(popup.callFormName || 'N/A', 70)] }),
+        new TableRow({ children: [createLabelCell('Dimensions', 30), createValueCell(`${popup.width} x ${popup.height}`, 70)] }),
+        new TableRow({ children: [createLabelCell('Grids', 30), createValueCell(popup.grids.join(', ') || 'None', 70)] }),
+      ];
+
+      docChildren.push(new Table({ rows: rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+      docChildren.push(new Paragraph({ text: '', spacing: { after: 200 } }));
+    });
+  }
+
+  // --- WHEN NEW FORM INSTANCE ---
+  if (currentData.whenNewFormInstance.length > 0) {
+    docChildren.push(new Paragraph({ text: 'When New Form Instance', heading: HeadingLevel.HEADING_1 }));
+    docChildren.push(
+      new Paragraph({
+        children: [new TextRun({ text: 'Action Refs: ', bold: true }), new TextRun(currentData.whenNewFormInstance.join(', '))],
+        spacing: { after: 200 },
+      })
+    );
+
+    if (currentData.whenNewFormInstanceGroovy.length > 0) {
+      currentData.whenNewFormInstanceGroovy.forEach((action) => {
+        action.classes.forEach((cls) => {
+          docChildren.push(new Paragraph({ text: `Action: ${action.actionName} (${cls.type})`, heading: HeadingLevel.HEADING_3 }));
+          if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B' }));
+          docChildren.push(createCodeBlock(cls.script || cls.sql));
+        });
+      });
+    }
+  }
+
+  // --- GRIDS ---
+  if (currentData.grids.length > 0) {
+    docChildren.push(new Paragraph({ text: 'Grids', heading: HeadingLevel.HEADING_1 }));
+
+    currentData.grids.forEach((grid) => {
+      // Grid Header
+      docChildren.push(new Paragraph({ text: `Grid: ${grid.name}`, heading: HeadingLevel.HEADING_2 }));
+
+      // Grid Info Table
+      const infoRows = [
+        new TableRow({ children: [createLabelCell('Label', 20), createValueCell(grid.label || '', 30), createLabelCell('Type', 20), createValueCell(grid.type || '', 30)] }),
+        new TableRow({ children: [createLabelCell('Tab', 20), createValueCell(grid.tab ? grid.tab.label : '', 30), createLabelCell('Ref', 20), createValueCell(grid.ref || '', 30)] }),
+        new TableRow({ children: [createLabelCell('Permissions', 20), createValueCell(`I:${grid.insertAllowed} U:${grid.updateAllowed} D:${grid.deleteAllowed}`, 80)] }),
+      ];
+      docChildren.push(new Table({ rows: infoRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+      docChildren.push(new Paragraph({ text: '' }));
+
+      // Templates
+      const tplKeys = Object.keys(grid.templates);
+      if (tplKeys.length > 0) {
+        docChildren.push(new Paragraph({ text: 'Templates', heading: HeadingLevel.HEADING_3 }));
+        tplKeys.forEach((key) => {
+          docChildren.push(new Paragraph({ text: key, bold: true, spacing: { before: 100 } }));
+          docChildren.push(createCodeBlock(grid.templates[key]));
+        });
+      }
+
+      // RPC Expand
+      if (grid.rpcExpand) {
+        docChildren.push(new Paragraph({ text: 'RPC Expand', heading: HeadingLevel.HEADING_3 }));
+        docChildren.push(createCodeBlock(grid.rpcExpand));
+        if (grid.rpcExpandInitOrderBy) {
+          docChildren.push(new Paragraph({ text: `Init Order By: ${grid.rpcExpandInitOrderBy}`, spacing: { before: 100 } }));
+        }
+      }
+
+      // LOVs
+      if (grid.listOfValues.length > 0) {
+        docChildren.push(new Paragraph({ text: 'List Of Values', heading: HeadingLevel.HEADING_3 }));
+        grid.listOfValues.forEach((lov) => {
+          docChildren.push(new Paragraph({ text: `${lov.name} ${lov.label ? `(${lov.label})` : ''}`, bold: true, spacing: { before: 100 } }));
+          if (lov.value) docChildren.push(createCodeBlock(lov.value));
+          if (lov.initOrderBy) docChildren.push(new Paragraph({ text: `Order By: ${lov.initOrderBy}` }));
+        });
+      }
+
+      // Comboboxes
+      if (grid.comboboxes.length > 0) {
+        docChildren.push(new Paragraph({ text: 'Comboboxes', heading: HeadingLevel.HEADING_3 }));
+        grid.comboboxes.forEach((combo) => {
+          docChildren.push(new Paragraph({ text: `${combo.name} ${combo.label ? `(${combo.label})` : ''}`, bold: true, spacing: { before: 100 } }));
+          if (combo.sqlValue) {
+            docChildren.push(createCodeBlock(combo.sqlValue));
+          } else if (combo.rows.length > 0) {
+            const comboRows = [new TableRow({ children: [createHeaderCell('ID'), createHeaderCell('Label')] })];
+            combo.rows.forEach((r) => comboRows.push(new TableRow({ children: [createValueCell(r.id), createValueCell(r.label)] })));
+            docChildren.push(new Table({ rows: comboRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+          }
+        });
+      }
+
+      // Events
+      if (grid.events.length > 0) {
+        docChildren.push(new Paragraph({ text: 'Events', heading: HeadingLevel.HEADING_3 }));
+        grid.events.forEach((evt) => {
+          const evtTitle = `${evt.name}${evt.context ? ` (Field: ${evt.context})` : ''}`;
+          docChildren.push(
+            new Paragraph({
+              children: [new TextRun({ text: evtTitle, bold: true, color: '4F46E5', size: 24 }), new TextRun({ text: evt.waitingWindow ? ' [Waiting Window]' : '', color: 'D97706', size: 20 })],
+              spacing: { before: 150 },
+            })
+          );
+
+          if (evt.actionRefs.length > 0) {
+            docChildren.push(new Paragraph({ text: `Action Refs: ${evt.actionRefs.join(', ')}`, size: 20 }));
+          }
+
+          if (evt.groovyScripts.length > 0) {
+            evt.groovyScripts.forEach((action) => {
+              action.classes.forEach((cls) => {
+                docChildren.push(new Paragraph({ text: `>> ${cls.type} (${cls.className})`, size: 18, color: '6B7280', italics: true }));
+                docChildren.push(createCodeBlock(cls.script || cls.sql));
+              });
+            });
+          }
+        });
+      }
+
+      // Buttons
+      if (grid.bottomToolbarButtons.length > 0) {
+        docChildren.push(new Paragraph({ text: 'Buttons', heading: HeadingLevel.HEADING_3 }));
+        grid.bottomToolbarButtons.forEach((btn) => {
+          docChildren.push(new Paragraph({ text: `[${btn.type}] ${btn.name} - ${btn.label}`, bold: true, spacing: { before: 100 } }));
+          if (btn.callFormName) docChildren.push(new Paragraph({ text: `CallForm: ${btn.callFormName}` }));
+
+          if (btn.params && btn.params.length > 0) {
+            const paramText = btn.params.map((p) => `${p.name}=${p.alias}`).join(', ');
+            docChildren.push(new Paragraph({ text: `Params: ${paramText}`, size: 20 }));
+          }
+
+          if (btn.groovyScripts.length > 0) {
+            btn.groovyScripts.forEach((action) => {
+              action.classes.forEach((cls) => {
+                docChildren.push(new Paragraph({ text: `>> ${cls.type} (${cls.className})`, size: 18, color: '6B7280', italics: true }));
+                docChildren.push(createCodeBlock(cls.script || cls.sql));
+              });
+            });
+          }
+        });
+      }
+
+      // Separatore Grid
+      docChildren.push(
+        new Paragraph({
+          text: '',
+          border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'E5E7EB' } },
+          spacing: { after: 300 },
+        })
+      );
+    });
+  }
+
+  // Creazione Documento
+  const doc = new Document({
+    styles: {
+      paragraphStyles: [
+        {
+          id: 'Heading1',
+          name: 'Heading 1',
+          basedOn: 'Normal',
+          next: 'Normal',
+          quickFormat: true,
+          run: { size: 32, bold: true, color: '1E40AF', font: 'Segoe UI' }, // 16pt Blue
+          paragraph: { spacing: { before: 400, after: 200 } },
+        },
+        {
+          id: 'Heading2',
+          name: 'Heading 2',
+          basedOn: 'Normal',
+          next: 'Normal',
+          quickFormat: true,
+          run: { size: 28, bold: true, color: '374151', font: 'Segoe UI' }, // 14pt Gray
+          paragraph: { spacing: { before: 300, after: 150 } },
+        },
+        {
+          id: 'Heading3',
+          name: 'Heading 3',
+          basedOn: 'Normal',
+          next: 'Normal',
+          quickFormat: true,
+          run: { size: 24, bold: true, color: '4B5563', font: 'Segoe UI' }, // 12pt Gray
+          paragraph: { spacing: { before: 200, after: 100 } },
+        },
+      ],
+    },
+    sections: [
+      {
+        properties: {},
+        children: docChildren,
+      },
+    ],
+  });
+
+  // Generazione e Download
+  try {
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, 'JBWT_Export.docx');
+  } catch (err) {
+    console.error('Errore durante la generazione del Word:', err);
+    alert('Errore durante la generazione del documento Word.');
+  }
 }
 
 function renderSection(title, key, count, content) {

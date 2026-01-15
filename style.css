@@ -81,6 +81,30 @@ h1 {
 .download-btn:hover {
   background: #047857;
 }
+.download-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+.download-word-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+.download-word-btn:hover {
+  background: #1d4ed8;
+}
+.download-word-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
 .loading,
 .error {
   padding: 16px;
@@ -461,6 +485,48 @@ h1 {
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
 }
+
+/* Stili per riepilogo in sidebar */
+.sidebar-grid-location {
+  font-size: 12px;
+  margin-left: 22px;
+}
+.sidebar-grid-location.is-tab {
+  color: #6b21a8; /* purple */
+}
+.sidebar-grid-location.is-popup {
+  color: #c2410c; /* orange */
+}
+
+.sidebar-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+  margin-left: 22px; /* Allineo ai dettagli sulla posizione */
+}
+
+.summary-badge {
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
+  color: white;
+  line-height: 1.2;
+}
+
+.sb-abil {
+  background-color: #4f46e5;
+} /* Indigo */
+.sb-ctrl {
+  background-color: #db2777;
+} /* Pink */
+.sb-lov {
+  background-color: #059669;
+} /* Green */
+.sb-combo {
+  background-color: #d97706;
+} /* Amber */
 
 /* Fix per PrismJS dentro le card */
 pre[class*='language-'] {
