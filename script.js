@@ -477,6 +477,13 @@ async function copyAllScripts(btn) {
     const blocks = container.querySelectorAll('.code-block');
     let text = '';
     blocks.forEach((b) => {
+      const wrapper = b.closest('.code-block-wrapper');
+      if (wrapper && wrapper.parentElement) {
+        const failMsg = wrapper.parentElement.querySelector('.text-red');
+        if (failMsg) {
+          text += failMsg.textContent.trim() + '\n';
+        }
+      }
       text += b.textContent + '\n\n';
     });
     await navigator.clipboard.writeText(text);
@@ -1007,6 +1014,33 @@ function downloadExcel() {
       rows.push([]);
     }
 
+    // CheckAndSaveData
+    if (grid.checkAndSaveData) {
+      const ops = ['insert', 'update', 'delete'];
+      const hasData = ops.some((op) => grid.checkAndSaveData[op].length > 0);
+
+      if (hasData) {
+        rows.push(['CHECK AND SAVE DATA']);
+        rows.push(['Operation', 'SQL']);
+        ops.forEach((op) => {
+          grid.checkAndSaveData[op].forEach((sql) => {
+            rows.push([op.toUpperCase(), sql]);
+          });
+        });
+        rows.push([]);
+      }
+    }
+
+    // Before Commit Validation
+    if (grid.beforeCommitValidation.length > 0) {
+      rows.push(['BEFORE COMMIT VALIDATION']);
+      rows.push(['Name', 'Function', 'Fail Message', 'SQL']);
+      grid.beforeCommitValidation.forEach((bc) => {
+        rows.push([bc.name, bc.function, bc.failMessage, bc.sql]);
+      });
+      rows.push([]);
+    }
+
     // Events
     if (grid.events.length > 0) {
       rows.push(['EVENTS']);
@@ -1078,7 +1112,7 @@ function downloadExcel() {
 async function downloadWord() {
   if (!currentData || !window.docx) return;
 
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, ShadingType } = window.docx;
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, ShadingType, TableOfContents, PageBreak } = window.docx;
 
   // --- HELPERS STILE ---
 
@@ -1114,8 +1148,13 @@ async function downloadWord() {
   const createHeaderCell = (text, width = null) => createCell(text, { bold: true, width, bg: 'E5E7EB', color: '000000' });
 
   // Helper per blocchi di codice
-  const createCodeBlock = (code) => {
+  const createCodeBlock = (code, type = 'sql') => {
     if (!code) return new Paragraph('');
+
+    let fillColor = 'F9FAFB'; // Default Gray
+    if (type === 'groovy') fillColor = 'FFF7ED'; // Light Orange
+    else if (type === 'sql') fillColor = 'EFF6FF'; // Light Blue
+
     return new Paragraph({
       children: [
         new TextRun({
@@ -1132,7 +1171,7 @@ async function downloadWord() {
         left: { style: BorderStyle.SINGLE, size: 1, color: 'E5E7EB' },
         right: { style: BorderStyle.SINGLE, size: 1, color: 'E5E7EB' },
       },
-      shading: { fill: 'F9FAFB', type: ShadingType.CLEAR },
+      shading: { fill: fillColor, type: ShadingType.CLEAR },
       indent: { left: 100, right: 100 },
     });
   };
@@ -1149,11 +1188,26 @@ async function downloadWord() {
     })
   );
 
+  // --- INDICE ---
+  docChildren.push(
+    new Paragraph({
+      children: [new TextRun({ text: 'Indice', bold: true, size: 24 })],
+      spacing: { after: 200 },
+    })
+  );
+  docChildren.push(
+    new TableOfContents('Sommario', {
+      hyperlink: true,
+      headingStyleRange: '1-3',
+    })
+  );
+  docChildren.push(new Paragraph({ children: [new PageBreak()] }));
+
   if (currentData.description) {
     docChildren.push(
       new Paragraph({
         children: [new TextRun({ text: 'Descrizione: ', bold: true, size: 24 }), new TextRun({ text: currentData.description, size: 24 })],
-        spacing: { after: 300 },
+        spacing: { after: 400 },
         border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2563EB' } }, // Bordo blu a sinistra
         indent: { left: 200 },
       })
@@ -1175,7 +1229,7 @@ async function downloadWord() {
       ];
 
       docChildren.push(new Table({ rows: rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-      docChildren.push(new Paragraph({ text: '', spacing: { after: 200 } }));
+      docChildren.push(new Paragraph({ text: '', spacing: { after: 400 } }));
     });
   }
 
@@ -1194,7 +1248,7 @@ async function downloadWord() {
         action.classes.forEach((cls) => {
           docChildren.push(new Paragraph({ text: `Action: ${action.actionName} (${cls.type})`, heading: HeadingLevel.HEADING_3 }));
           if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B' }));
-          docChildren.push(createCodeBlock(cls.script || cls.sql));
+          docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
         });
       });
     }
@@ -1215,22 +1269,22 @@ async function downloadWord() {
         new TableRow({ children: [createLabelCell('Permissions', 20), createValueCell(`I:${grid.insertAllowed} U:${grid.updateAllowed} D:${grid.deleteAllowed}`, 80)] }),
       ];
       docChildren.push(new Table({ rows: infoRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-      docChildren.push(new Paragraph({ text: '' }));
+      docChildren.push(new Paragraph({ text: '', spacing: { after: 240 } }));
 
       // Templates
       const tplKeys = Object.keys(grid.templates);
       if (tplKeys.length > 0) {
         docChildren.push(new Paragraph({ text: 'Templates', heading: HeadingLevel.HEADING_3 }));
         tplKeys.forEach((key) => {
-          docChildren.push(new Paragraph({ text: key, bold: true, spacing: { before: 100 } }));
-          docChildren.push(createCodeBlock(grid.templates[key]));
+          docChildren.push(new Paragraph({ text: key, bold: true, spacing: { before: 200 } }));
+          docChildren.push(createCodeBlock(grid.templates[key], 'sql'));
         });
       }
 
       // RPC Expand
       if (grid.rpcExpand) {
         docChildren.push(new Paragraph({ text: 'RPC Expand', heading: HeadingLevel.HEADING_3 }));
-        docChildren.push(createCodeBlock(grid.rpcExpand));
+        docChildren.push(createCodeBlock(grid.rpcExpand, 'sql'));
         if (grid.rpcExpandInitOrderBy) {
           docChildren.push(new Paragraph({ text: `Init Order By: ${grid.rpcExpandInitOrderBy}`, spacing: { before: 100 } }));
         }
@@ -1240,8 +1294,8 @@ async function downloadWord() {
       if (grid.listOfValues.length > 0) {
         docChildren.push(new Paragraph({ text: 'List Of Values', heading: HeadingLevel.HEADING_3 }));
         grid.listOfValues.forEach((lov) => {
-          docChildren.push(new Paragraph({ text: `${lov.name} ${lov.label ? `(${lov.label})` : ''}`, bold: true, spacing: { before: 100 } }));
-          if (lov.value) docChildren.push(createCodeBlock(lov.value));
+          docChildren.push(new Paragraph({ text: `${lov.name} ${lov.label ? `(${lov.label})` : ''}`, bold: true, spacing: { before: 200 } }));
+          if (lov.value) docChildren.push(createCodeBlock(lov.value, 'sql'));
           if (lov.initOrderBy) docChildren.push(new Paragraph({ text: `Order By: ${lov.initOrderBy}` }));
         });
       }
@@ -1250,9 +1304,9 @@ async function downloadWord() {
       if (grid.comboboxes.length > 0) {
         docChildren.push(new Paragraph({ text: 'Comboboxes', heading: HeadingLevel.HEADING_3 }));
         grid.comboboxes.forEach((combo) => {
-          docChildren.push(new Paragraph({ text: `${combo.name} ${combo.label ? `(${combo.label})` : ''}`, bold: true, spacing: { before: 100 } }));
+          docChildren.push(new Paragraph({ text: `${combo.name} ${combo.label ? `(${combo.label})` : ''}`, bold: true, spacing: { before: 200 } }));
           if (combo.sqlValue) {
-            docChildren.push(createCodeBlock(combo.sqlValue));
+            docChildren.push(createCodeBlock(combo.sqlValue, 'sql'));
           } else if (combo.rows.length > 0) {
             const comboRows = [new TableRow({ children: [createHeaderCell('ID'), createHeaderCell('Label')] })];
             combo.rows.forEach((r) => comboRows.push(new TableRow({ children: [createValueCell(r.id), createValueCell(r.label)] })));
@@ -1261,15 +1315,55 @@ async function downloadWord() {
         });
       }
 
+      // CheckAndSaveData
+      if (grid.checkAndSaveData) {
+        const ops = ['insert', 'update', 'delete'];
+        const hasData = ops.some((op) => grid.checkAndSaveData[op].length > 0);
+
+        if (hasData) {
+          docChildren.push(new Paragraph({ text: 'CheckAndSaveData', heading: HeadingLevel.HEADING_3 }));
+          ops.forEach((op) => {
+            if (grid.checkAndSaveData[op].length > 0) {
+              docChildren.push(new Paragraph({ text: op.charAt(0).toUpperCase() + op.slice(1), bold: true, spacing: { before: 200 } }));
+              grid.checkAndSaveData[op].forEach((sql) => {
+                docChildren.push(createCodeBlock(sql, 'sql'));
+              });
+            }
+          });
+        }
+      }
+
+      // Before Commit Validation
+      if (grid.beforeCommitValidation.length > 0) {
+        docChildren.push(new Paragraph({ text: 'Before Commit Validation', heading: HeadingLevel.HEADING_3 }));
+        grid.beforeCommitValidation.forEach((bc) => {
+          docChildren.push(new Paragraph({ text: bc.name, bold: true, spacing: { before: 200 } }));
+          if (bc.function) docChildren.push(new Paragraph({ text: `Function: ${bc.function}` }));
+          if (bc.failMessage) docChildren.push(new Paragraph({ text: `Fail Message: ${bc.failMessage}`, color: '991B1B' }));
+          docChildren.push(createCodeBlock(bc.sql, 'sql'));
+        });
+      }
+
       // Events
       if (grid.events.length > 0) {
         docChildren.push(new Paragraph({ text: 'Events', heading: HeadingLevel.HEADING_3 }));
-        grid.events.forEach((evt) => {
+        const sortedEvents = [...grid.events].sort((a, b) => {
+          const getPriority = (name) => {
+            const n = name.toLowerCase();
+            if (n.includes('whenexitchangedrecord')) return 1;
+            if (n.includes('whenfinishedit')) return 2;
+            if (n.includes('whenchangevalue')) return 3;
+            return 4;
+          };
+          return getPriority(a.name) - getPriority(b.name);
+        });
+
+        sortedEvents.forEach((evt) => {
           const evtTitle = `${evt.name}${evt.context ? ` (Field: ${evt.context})` : ''}`;
           docChildren.push(
             new Paragraph({
-              children: [new TextRun({ text: evtTitle, bold: true, color: '4F46E5', size: 24 }), new TextRun({ text: evt.waitingWindow ? ' [Waiting Window]' : '', color: 'D97706', size: 20 })],
-              spacing: { before: 150 },
+              children: [new TextRun({ text: evtTitle }), new TextRun({ text: evt.waitingWindow ? ' [Waiting Window]' : '', color: 'D97706', size: 20 })],
+              heading: HeadingLevel.HEADING_4,
             })
           );
 
@@ -1281,7 +1375,7 @@ async function downloadWord() {
             evt.groovyScripts.forEach((action) => {
               action.classes.forEach((cls) => {
                 docChildren.push(new Paragraph({ text: `>> ${cls.type} (${cls.className})`, size: 18, color: '6B7280', italics: true }));
-                docChildren.push(createCodeBlock(cls.script || cls.sql));
+                docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
               });
             });
           }
@@ -1292,7 +1386,7 @@ async function downloadWord() {
       if (grid.bottomToolbarButtons.length > 0) {
         docChildren.push(new Paragraph({ text: 'Buttons', heading: HeadingLevel.HEADING_3 }));
         grid.bottomToolbarButtons.forEach((btn) => {
-          docChildren.push(new Paragraph({ text: `[${btn.type}] ${btn.name} - ${btn.label}`, bold: true, spacing: { before: 100 } }));
+          docChildren.push(new Paragraph({ text: `[${btn.type}] ${btn.name} - ${btn.label}`, bold: true, spacing: { before: 200 } }));
           if (btn.callFormName) docChildren.push(new Paragraph({ text: `CallForm: ${btn.callFormName}` }));
 
           if (btn.params && btn.params.length > 0) {
@@ -1304,7 +1398,7 @@ async function downloadWord() {
             btn.groovyScripts.forEach((action) => {
               action.classes.forEach((cls) => {
                 docChildren.push(new Paragraph({ text: `>> ${cls.type} (${cls.className})`, size: 18, color: '6B7280', italics: true }));
-                docChildren.push(createCodeBlock(cls.script || cls.sql));
+                docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
               });
             });
           }
@@ -1316,7 +1410,7 @@ async function downloadWord() {
         new Paragraph({
           text: '',
           border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'E5E7EB' } },
-          spacing: { after: 300 },
+          spacing: { after: 480 },
         })
       );
     });
@@ -1333,7 +1427,7 @@ async function downloadWord() {
           next: 'Normal',
           quickFormat: true,
           run: { size: 32, bold: true, color: '1E40AF', font: 'Segoe UI' }, // 16pt Blue
-          paragraph: { spacing: { before: 400, after: 200 } },
+          paragraph: { spacing: { before: 400, after: 300 } },
         },
         {
           id: 'Heading2',
@@ -1342,7 +1436,7 @@ async function downloadWord() {
           next: 'Normal',
           quickFormat: true,
           run: { size: 28, bold: true, color: '374151', font: 'Segoe UI' }, // 14pt Gray
-          paragraph: { spacing: { before: 300, after: 150 } },
+          paragraph: { spacing: { before: 300, after: 200 } },
         },
         {
           id: 'Heading3',
@@ -1351,6 +1445,15 @@ async function downloadWord() {
           next: 'Normal',
           quickFormat: true,
           run: { size: 24, bold: true, color: '4B5563', font: 'Segoe UI' }, // 12pt Gray
+          paragraph: { spacing: { before: 240, after: 120 } },
+        },
+        {
+          id: 'Heading4',
+          name: 'Heading 4',
+          basedOn: 'Normal',
+          next: 'Normal',
+          quickFormat: true,
+          run: { size: 22, bold: true, color: '4F46E5', font: 'Segoe UI' }, // 11pt Indigo
           paragraph: { spacing: { before: 200, after: 100 } },
         },
       ],
