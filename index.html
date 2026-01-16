@@ -15,6 +15,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-groovy.min.js"></script>
     <link rel="stylesheet" href="style.css" />
+    <style>
+      .section-done {
+        border-color: #34d399 !important;
+      }
+      .section-done > .section-header {
+        background-color: #d1fae5 !important;
+        color: #065f46;
+      }
+      .section-done > .section-header:hover {
+        background-color: #a7f3d0 !important;
+      }
+    </style>
   </head>
   <body>
     <div class="container">
@@ -31,6 +43,10 @@
         </label>
 
         <div class="controls-container">
+          <label class="filter-checkbox">
+            <input type="checkbox" id="excludeFilterFields" checked />
+            Escludi campi *Filter
+          </label>
           <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cerca grid per nome..." disabled />
           <button id="downloadBtn" class="download-btn" onclick="downloadExcel()" disabled>📊 Scarica Excel</button>
           <button id="downloadWordBtn" class="download-word-btn" onclick="downloadWord()" disabled>📝 Scarica Word</button>
@@ -51,5 +67,7 @@
     </button>
 
     <script src="script.js"></script>
+    <script src="excel_export.js"></script>
+    <script src="word_export.js"></script>
   </body>
 </html>

@@ -1,5 +1,8 @@
 let expandedSections = {};
 let currentData = null; // Variabile globale per memorizzare i dati per l'export
+let currentFilename = 'Estrazione_JBWT.xml';
+let rawXMLText = null;
+let progressData = {};
 
 // Icona SVG per "copia" (due fogli)
 const COPY_ICON = `
@@ -29,6 +32,8 @@ async function loadDefaultXML() {
     if (window.fs && window.fs.readFile) {
       try {
         const response = await window.fs.readFile('AUTG0006.xml', { encoding: 'utf8' });
+        currentFilename = 'AUTG0006.xml';
+        rawXMLText = response;
         const data = parseXML(response);
         renderData(data);
       } catch (e) {
@@ -45,16 +50,29 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
+  currentFilename = file.name;
   const errorEl = document.getElementById('error');
   errorEl.classList.add('hidden');
 
   try {
     const text = await file.text();
+    rawXMLText = text;
     const data = parseXML(text);
     renderData(data);
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove('hidden');
+  }
+});
+
+document.getElementById('excludeFilterFields').addEventListener('change', () => {
+  if (rawXMLText) {
+    try {
+      const data = parseXML(rawXMLText);
+      renderData(data);
+    } catch (err) {
+      console.error('Errore nel ricalcolo del filtro:', err);
+    }
   }
 });
 
@@ -66,7 +84,9 @@ function parseXML(xmlText) {
     throw new Error('Errore nel parsing XML');
   }
 
-  const actionsMap = extractAllActions(xmlDoc);
+  const excludeFilter = document.getElementById('excludeFilterFields') ? document.getElementById('excludeFilterFields').checked : false;
+
+  const globalActionsMap = extractActions(xmlDoc, (node) => !node.closest('grid'));
   const result = {
     grids: [],
     popups: [],
@@ -85,7 +105,7 @@ function parseXML(xmlText) {
     const actionRef = formWhenNew.getAttribute('actionRef');
     if (actionRef) {
       result.whenNewFormInstance = actionRef.split(',').map((a) => a.trim());
-      result.whenNewFormInstanceGroovy = concatenateGroovyScripts(result.whenNewFormInstance, actionsMap);
+      result.whenNewFormInstanceGroovy = concatenateGroovyScripts(result.whenNewFormInstance, globalActionsMap);
     }
   }
 
@@ -133,6 +153,9 @@ function parseXML(xmlText) {
     const updateAttr = grid.getAttribute('updateAllowed');
     const deleteAttr = grid.getAttribute('deleteAllowed');
 
+    const gridLocalActions = extractActions(grid);
+    const gridActionsMap = { ...globalActionsMap, ...gridLocalActions };
+
     let parsedCheckAndSaveData = null;
     const checkAndSave = grid.querySelector('action[name="save"] class[class="CheckAndSaveData"]');
     if (checkAndSave) {
@@ -162,7 +185,9 @@ function parseXML(xmlText) {
       checkAndSaveData: parsedCheckAndSaveData,
       beforeCommitValidation: [],
       events: [],
+      topToolbarButtons: [],
       bottomToolbarButtons: [],
+      fields: [],
       templates: {},
     };
 
@@ -211,20 +236,35 @@ function parseXML(xmlText) {
     }
 
     // Estrazione Eventi Grid
-    gridData.events = extractEventsFromNode(grid, actionsMap);
+    gridData.events = extractEventsFromNode(grid, gridActionsMap);
 
     // Estrazione Eventi Fields (es. whenFinishEditValue)
     const allFields = grid.querySelectorAll('fields > *');
     allFields.forEach((field) => {
       const fName = field.getAttribute('name');
-      const fEvents = extractEventsFromNode(field, actionsMap, fName);
+      if (excludeFilter && fName && fName.endsWith('Filter')) return;
+
+      gridData.fields.push({
+        tag: field.tagName,
+        name: fName,
+        label: field.getAttribute('label'),
+        hint: field.getAttribute('hint'),
+        length: field.getAttribute('length'),
+        isMandatory: field.getAttribute('isMandatory'),
+        isEditable: field.getAttribute('isEditable'),
+        isHidden: field.getAttribute('isHidden'),
+      });
+
+      const fEvents = extractEventsFromNode(field, gridActionsMap, fName);
       gridData.events.push(...fEvents);
     });
 
     const lovs = grid.querySelectorAll('fields > listOfValue');
     lovs.forEach((lov) => {
+      const name = lov.getAttribute('name');
+      if (excludeFilter && name && name.endsWith('Filter')) return;
       const lovData = {
-        name: lov.getAttribute('name'),
+        name: name,
         label: lov.getAttribute('label'),
         value: null,
         initOrderBy: null,
@@ -242,8 +282,10 @@ function parseXML(xmlText) {
 
     const combos = grid.querySelectorAll('fields > combobox, filter > fields > combobox');
     combos.forEach((combo) => {
+      const name = combo.getAttribute('name');
+      if (excludeFilter && name && name.endsWith('Filter')) return;
       const comboData = {
-        name: combo.getAttribute('name'),
+        name: name,
         label: combo.getAttribute('label'),
         rows: [],
         sqlValue: null,
@@ -275,6 +317,55 @@ function parseXML(xmlText) {
         failMessage: bc.querySelector('param[name="failMessage"]')?.textContent.trim() || '',
       });
     });
+
+    const topToolbar = getDirectChild(grid, 'topToolbar');
+    if (topToolbar) {
+      const buttons = topToolbar.querySelectorAll('button, callFormButton');
+      const excludedButtons = ['save', 'insert', 'delete', 'reload', 'excel', 'filter'];
+      buttons.forEach((btn) => {
+        const name = btn.getAttribute('name');
+        if (excludedButtons.includes(name)) return;
+
+        let actionRefs = [];
+        const whenPressed = btn.querySelector('events > whenButtonPressed');
+        if (whenPressed) {
+          const actionRefAttr = whenPressed.getAttribute('actionRef');
+          if (actionRefAttr) {
+            actionRefs = actionRefAttr.split(',').map((a) => a.trim());
+          }
+        }
+
+        let type = btn.tagName;
+        let callFormName = '';
+        if (type === 'callFormButton') {
+          const callFormNode = btn.querySelector('callFormName');
+          if (callFormNode) callFormName = callFormNode.textContent;
+        }
+
+        const params = [];
+        const paramsList = btn.querySelector('paramsList');
+        if (paramsList) {
+          const paramNodes = paramsList.querySelectorAll('param');
+          paramNodes.forEach((p) => {
+            params.push({
+              name: p.getAttribute('name'),
+              alias: p.getAttribute('alias'),
+            });
+          });
+        }
+
+        gridData.topToolbarButtons.push({
+          type: type,
+          name: name,
+          label: btn.getAttribute('label') || btn.getAttribute('hint'),
+          order: btn.getAttribute('order'),
+          callFormName: callFormName,
+          actionRef: actionRefs,
+          params: params,
+          groovyScripts: concatenateGroovyScripts(actionRefs, gridActionsMap),
+        });
+      });
+    }
 
     const bottomToolbar = getDirectChild(grid, 'bottomToolbar');
     if (bottomToolbar) {
@@ -316,7 +407,7 @@ function parseXML(xmlText) {
           callFormName: callFormName,
           actionRef: actionRefs,
           params: params,
-          groovyScripts: concatenateGroovyScripts(actionRefs, actionsMap),
+          groovyScripts: concatenateGroovyScripts(actionRefs, gridActionsMap),
         });
       });
     }
@@ -353,11 +444,12 @@ function extractEventsFromNode(node, actionsMap, context = null) {
   return events;
 }
 
-function extractAllActions(xmlDoc) {
+function extractActions(rootNode, filterFn = null) {
   const actionsMap = {};
-  const actions = xmlDoc.querySelectorAll('action');
+  const actions = rootNode.querySelectorAll('action');
 
   actions.forEach((action) => {
+    if (filterFn && !filterFn(action)) return;
     const actionName = action.getAttribute('name');
     if (!actionName) return;
 
@@ -497,6 +589,7 @@ async function copyAllScripts(btn) {
 }
 
 function renderData(data) {
+  loadProgress();
   currentData = data; // Salva i dati globalmente
   document.getElementById('searchInput').disabled = false;
   document.getElementById('downloadBtn').disabled = false;
@@ -809,6 +902,57 @@ function renderData(data) {
                   ${renderSection('Altri Eventi', `events-other-${idx}`, evAltri.length, evAltri.length > 0 ? evAltri.map((evt, eIdx) => renderEventBlock(evt, idx, `other-${eIdx}`)).join('') : '<p class="text-gray">Nessun altro evento</p>')}
 
                   ${renderSection(
+                    'Top Toolbar Buttons',
+                    `topbuttons-${idx}`,
+                    grid.topToolbarButtons.length,
+                    grid.topToolbarButtons.length > 0
+                      ? grid.topToolbarButtons
+                          .map(
+                            (btn, btnIdx) => `
+                          <div class="mb-3" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
+                              <p class="text-sm mb-1"><span class="badge badge-blue text-xs">${btn.type}</span></p>
+                              <p class="text-sm mb-1"><span class="info-label">Name:</span> ${btn.name}</p>
+                              <p class="text-sm mb-1"><span class="info-label">Label:</span> ${btn.label}</p>
+                              <p class="text-sm mb-1"><span class="info-label">Order:</span> ${btn.order}</p>
+                              ${btn.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${btn.callFormName}</p>` : ''}
+                              ${
+                                btn.params && btn.params.length > 0
+                                  ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
+                                      <p class="text-sm info-label">Parametri:</p>
+                                      <table class="table">
+                                          <thead>
+                                              <tr>
+                                                  <th>Name</th>
+                                                  <th>Alias</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                              ${btn.params.map((p) => `<tr><td>${escapeHtml(p.name || '')}</td><td>${escapeHtml(p.alias || '')}</td></tr>`).join('')}
+                                          </tbody>
+                                      </table>
+                                   </div>`
+                                  : ''
+                              }
+                              <p class="text-sm mb-2"><span class="info-label">ActionRef:</span> ${btn.actionRef.join(', ') || 'Nessuno'}</p>
+                              
+                              ${
+                                btn.groovyScripts.length > 0
+                                  ? `
+                                  <div style="margin-top: 12px;">
+                                      <p class="text-sm info-label" style="color: #4f46e5;">Script Actions:</p>
+                                      ${renderGroovyScripts(btn.groovyScripts, `topbtn-groovy-${idx}-${btnIdx}`)}
+                                  </div>
+                              `
+                                  : ''
+                              }
+                          </div>
+                      `
+                          )
+                          .join('')
+                      : '<p class="text-gray">Nessuno presente</p>'
+                  )}
+
+                  ${renderSection(
                     'Bottom Toolbar Buttons',
                     `buttons-${idx}`,
                     grid.bottomToolbarButtons.length,
@@ -912,576 +1056,18 @@ function toggleGridSections(btn) {
   btn.textContent = newState ? '📂 Collassa tutto' : '📂 Espandi tutto';
 }
 
-// Funzione Export Excel
-function downloadExcel() {
-  if (!currentData) return;
-
-  const wb = XLSX.utils.book_new();
-
-  // Helper per applicare lo stile bold (funziona se la libreria supporta lo styling)
-  const setBoldHeaders = (ws, data) => {
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    for (let R = range.s.r; R <= range.e.r; ++R) {
-      // Applica bold se la riga sembra un header (tutto maiuscolo o prima riga di sezione)
-      const firstCell = ws[XLSX.utils.encode_cell({ r: R, c: 0 })];
-      if (firstCell && firstCell.v && typeof firstCell.v === 'string' && (firstCell.v === firstCell.v.toUpperCase() || data[R][0] === 'Name' || data[R][0] === 'Type')) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
-          if (!ws[cellRef]) continue;
-          if (!ws[cellRef].s) ws[cellRef].s = {};
-          ws[cellRef].s.font = { bold: true };
-        }
-      }
-    }
-  };
-
-  // 1. Foglio WNFI (When New Form Instance)
-  if (currentData.whenNewFormInstance.length > 0) {
-    const wnfiRows = [];
-    wnfiRows.push(['WHEN NEW FORM INSTANCE']);
-    wnfiRows.push(['Action Refs', currentData.whenNewFormInstance.join(', ')]);
-    wnfiRows.push([]);
-
-    if (currentData.whenNewFormInstanceGroovy.length > 0) {
-      wnfiRows.push(['SCRIPTS']);
-      wnfiRows.push(['Action', 'Type', 'Class', 'Fail Msg', 'Code']);
-      currentData.whenNewFormInstanceGroovy.forEach((action) => {
-        action.classes.forEach((item) => {
-          if (item.type === 'groovy') {
-            wnfiRows.push([action.actionName, 'Groovy', item.className, item.failMessage || '', item.script]);
-          } else if (item.type === 'sql') {
-            wnfiRows.push([action.actionName, 'SQL', item.className, item.failMessage || '', item.sql]);
-          }
-        });
-      });
-    }
-
-    const wsWNFI = XLSX.utils.aoa_to_sheet(wnfiRows);
-    wsWNFI['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 80 }];
-    setBoldHeaders(wsWNFI, wnfiRows);
-    XLSX.utils.book_append_sheet(wb, wsWNFI, 'WNFI');
-  }
-
-  // 2. Fogli per ogni Grid
-  currentData.grids.forEach((grid) => {
-    const rows = [];
-
-    // Header Info
-    rows.push(['GRID INFO']);
-    rows.push(['Name', grid.name]);
-    rows.push(['Type', grid.type || '']);
-    rows.push(['Label', grid.label]);
-    rows.push(['Tab', grid.tab ? `${grid.tab.label} (${grid.tab.name})` : '']);
-    rows.push(['Permissions', `I:${grid.insertAllowed} U:${grid.updateAllowed} D:${grid.deleteAllowed}`]);
-    rows.push([]); // Spacer
-
-    // Templates
-    if (Object.keys(grid.templates).length > 0) {
-      rows.push(['TEMPLATES']);
-      rows.push(['Name', 'Code']);
-      Object.entries(grid.templates).forEach(([name, code]) => {
-        rows.push([name, code]);
-      });
-      rows.push([]);
-    }
-
-    // RPC Expand
-    if (grid.rpcExpand) {
-      rows.push(['RPC EXPAND']);
-      rows.push(['Code', grid.rpcExpand]);
-      if (grid.rpcExpandInitOrderBy) rows.push(['Init Order By', grid.rpcExpandInitOrderBy]);
-      rows.push([]);
-    }
-
-    // LOVs
-    if (grid.listOfValues.length > 0) {
-      rows.push(['LIST OF VALUES']);
-      rows.push(['Name', 'Label', 'Value (SQL)', 'Init Order By']);
-      grid.listOfValues.forEach((lov) => {
-        rows.push([lov.name, lov.label, lov.value, lov.initOrderBy]);
-      });
-      rows.push([]);
-    }
-
-    // Combos
-    if (grid.comboboxes.length > 0) {
-      rows.push(['COMBOBOXES']);
-      rows.push(['Name', 'Label', 'SQL/Rows']);
-      grid.comboboxes.forEach((combo) => {
-        const val = combo.sqlValue || combo.rows.map((r) => `${r.id}:${r.label}`).join('; ');
-        rows.push([combo.name, combo.label, val]);
-      });
-      rows.push([]);
-    }
-
-    // CheckAndSaveData
-    if (grid.checkAndSaveData) {
-      const ops = ['insert', 'update', 'delete'];
-      const hasData = ops.some((op) => grid.checkAndSaveData[op].length > 0);
-
-      if (hasData) {
-        rows.push(['CHECK AND SAVE DATA']);
-        rows.push(['Operation', 'SQL']);
-        ops.forEach((op) => {
-          grid.checkAndSaveData[op].forEach((sql) => {
-            rows.push([op.toUpperCase(), sql]);
-          });
-        });
-        rows.push([]);
-      }
-    }
-
-    // Before Commit Validation
-    if (grid.beforeCommitValidation.length > 0) {
-      rows.push(['BEFORE COMMIT VALIDATION']);
-      rows.push(['Name', 'Function', 'Fail Message', 'SQL']);
-      grid.beforeCommitValidation.forEach((bc) => {
-        rows.push([bc.name, bc.function, bc.failMessage, bc.sql]);
-      });
-      rows.push([]);
-    }
-
-    // Events
-    if (grid.events.length > 0) {
-      rows.push(['EVENTS']);
-      rows.push(['Event Name', 'Waiting Window', 'Action Refs', 'Scripts']);
-      grid.events.forEach((evt) => {
-        const scripts = evt.groovyScripts
-          .map((action) =>
-            action.classes
-              .map((item) => {
-                if (item.type === 'groovy') return `[Groovy] ${item.script}`;
-                if (item.type === 'sql') return `[SQL] ${item.sql}`;
-                return '';
-              })
-              .join('\n')
-          )
-          .join('\n---\n');
-        const nameWithContext = evt.name + (evt.context ? ` (${evt.context})` : '');
-        rows.push([nameWithContext, evt.waitingWindow, evt.actionRefs.join(', '), scripts]);
-      });
-      rows.push([]);
-    }
-
-    // Buttons
-    if (grid.bottomToolbarButtons.length > 0) {
-      rows.push(['BUTTONS']);
-      rows.push(['Type', 'Name', 'Label', 'CallForm', 'Params', 'Action Refs', 'Scripts']);
-      grid.bottomToolbarButtons.forEach((btn) => {
-        const scripts = btn.groovyScripts
-          .map((action) =>
-            action.classes
-              .map((item) => {
-                if (item.type === 'groovy') return `[Groovy] ${item.script}`;
-                if (item.type === 'sql') return `[SQL] ${item.sql}`;
-                return '';
-              })
-              .join('\n')
-          )
-          .join('\n---\n');
-        const params = (btn.params || []).map((p) => `${p.name || ''}${p.alias ? ` (${p.alias})` : ''}`).join('\n');
-        rows.push([btn.type, btn.name, btn.label, btn.callFormName, params, btn.actionRef.join(', '), scripts]);
-      });
-      rows.push([]);
-    }
-
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-
-    setBoldHeaders(ws, rows); // Imposta larghezza colonne
-    ws['!cols'] = [{ wch: 20 }, { wch: 30 }, { wch: 50 }, { wch: 30 }, { wch: 40 }, { wch: 30 }, { wch: 50 }];
-
-    // Nome foglio (max 31 caratteri e univoco)
-    let sheetName = grid.name.replace(/[\[\]\*\/\\\?]/g, '');
-    if (sheetName.length > 31) sheetName = sheetName.substring(0, 31);
-
-    if (wb.SheetNames.includes(sheetName)) {
-      let counter = 1;
-      while (wb.SheetNames.includes(`${sheetName.substring(0, 28)}_${counter}`)) {
-        counter++;
-      }
-      sheetName = `${sheetName.substring(0, 28)}_${counter}`;
-    }
-
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  });
-
-  XLSX.writeFile(wb, 'JBWT_Detailed_Export.xlsx');
-}
-
-// Funzione Export Word
-async function downloadWord() {
-  if (!currentData || !window.docx) return;
-
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, ShadingType, TableOfContents, PageBreak } = window.docx;
-
-  // --- HELPERS STILE ---
-
-  // Helper generico per celle
-  const createCell = (text, opts = {}) => {
-    const { bold = false, width = null, bg = null, color = '000000', size = 22 } = opts;
-    return new TableCell({
-      children: [
-        new Paragraph({
-          children: [new TextRun({ text: text || '', bold: bold, size: size, color: color })],
-          spacing: { before: 60, after: 60 }, // Padding verticale
-        }),
-      ],
-      width: width ? { size: width, type: WidthType.PERCENTAGE } : undefined,
-      shading: bg ? { fill: bg, type: ShadingType.CLEAR } : undefined,
-      borders: {
-        top: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
-        bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
-        left: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
-        right: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
-      },
-      margins: { top: 80, bottom: 80, left: 80, right: 80 },
-    });
-  };
-
-  // Cella per Etichette (es. "Nome:", "Tipo:") - Sfondo grigio chiaro, testo scuro
-  const createLabelCell = (text, width = null) => createCell(text, { bold: true, width, bg: 'F3F4F6', color: '374151' });
-
-  // Cella per Valori - Sfondo bianco
-  const createValueCell = (text, width = null) => createCell(text, { width, color: '111827' });
-
-  // Cella per Intestazioni Tabelle (es. "ID", "Label") - Sfondo più scuro
-  const createHeaderCell = (text, width = null) => createCell(text, { bold: true, width, bg: 'E5E7EB', color: '000000' });
-
-  // Helper per blocchi di codice
-  const createCodeBlock = (code, type = 'sql') => {
-    if (!code) return new Paragraph('');
-
-    let fillColor = 'F9FAFB'; // Default Gray
-    if (type === 'groovy') fillColor = 'FFF7ED'; // Light Orange
-    else if (type === 'sql') fillColor = 'EFF6FF'; // Light Blue
-
-    return new Paragraph({
-      children: [
-        new TextRun({
-          text: code,
-          font: 'Courier New',
-          size: 18, // 9pt
-          color: '1F2937',
-        }),
-      ],
-      spacing: { before: 120, after: 120 },
-      border: {
-        top: { style: BorderStyle.SINGLE, size: 1, color: 'E5E7EB' },
-        bottom: { style: BorderStyle.SINGLE, size: 1, color: 'E5E7EB' },
-        left: { style: BorderStyle.SINGLE, size: 1, color: 'E5E7EB' },
-        right: { style: BorderStyle.SINGLE, size: 1, color: 'E5E7EB' },
-      },
-      shading: { fill: fillColor, type: ShadingType.CLEAR },
-      indent: { left: 100, right: 100 },
-    });
-  };
-
-  const docChildren = [];
-
-  // --- TITOLO ---
-  docChildren.push(
-    new Paragraph({
-      text: 'Estrazione XML JBWT',
-      heading: HeadingLevel.HEADING_1,
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 400 }, // Spazio gestito dallo stile globale, ma questo è extra
-    })
-  );
-
-  // --- INDICE ---
-  docChildren.push(
-    new Paragraph({
-      children: [new TextRun({ text: 'Indice', bold: true, size: 24 })],
-      spacing: { after: 200 },
-    })
-  );
-  docChildren.push(
-    new TableOfContents('Sommario', {
-      hyperlink: true,
-      headingStyleRange: '1-3',
-    })
-  );
-  docChildren.push(new Paragraph({ children: [new PageBreak()] }));
-
-  if (currentData.description) {
-    docChildren.push(
-      new Paragraph({
-        children: [new TextRun({ text: 'Descrizione: ', bold: true, size: 24 }), new TextRun({ text: currentData.description, size: 24 })],
-        spacing: { after: 400 },
-        border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2563EB' } }, // Bordo blu a sinistra
-        indent: { left: 200 },
-      })
-    );
-  }
-
-  // --- POPUPS ---
-  if (currentData.popups && currentData.popups.length > 0) {
-    docChildren.push(new Paragraph({ text: 'Popups', heading: HeadingLevel.HEADING_1 }));
-
-    currentData.popups.forEach((popup) => {
-      docChildren.push(new Paragraph({ text: popup.name, heading: HeadingLevel.HEADING_2 }));
-
-      const rows = [
-        new TableRow({ children: [createLabelCell('Title', 30), createValueCell(popup.title || 'N/A', 70)] }),
-        new TableRow({ children: [createLabelCell('CallForm', 30), createValueCell(popup.callFormName || 'N/A', 70)] }),
-        new TableRow({ children: [createLabelCell('Dimensions', 30), createValueCell(`${popup.width} x ${popup.height}`, 70)] }),
-        new TableRow({ children: [createLabelCell('Grids', 30), createValueCell(popup.grids.join(', ') || 'None', 70)] }),
-      ];
-
-      docChildren.push(new Table({ rows: rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-      docChildren.push(new Paragraph({ text: '', spacing: { after: 400 } }));
-    });
-  }
-
-  // --- WHEN NEW FORM INSTANCE ---
-  if (currentData.whenNewFormInstance.length > 0) {
-    docChildren.push(new Paragraph({ text: 'When New Form Instance', heading: HeadingLevel.HEADING_1 }));
-    docChildren.push(
-      new Paragraph({
-        children: [new TextRun({ text: 'Action Refs: ', bold: true }), new TextRun(currentData.whenNewFormInstance.join(', '))],
-        spacing: { after: 200 },
-      })
-    );
-
-    if (currentData.whenNewFormInstanceGroovy.length > 0) {
-      currentData.whenNewFormInstanceGroovy.forEach((action) => {
-        action.classes.forEach((cls) => {
-          docChildren.push(new Paragraph({ text: `Action: ${action.actionName} (${cls.type})`, heading: HeadingLevel.HEADING_3 }));
-          if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B' }));
-          docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
-        });
-      });
-    }
-  }
-
-  // --- GRIDS ---
-  if (currentData.grids.length > 0) {
-    docChildren.push(new Paragraph({ text: 'Grids', heading: HeadingLevel.HEADING_1 }));
-
-    currentData.grids.forEach((grid) => {
-      // Grid Header
-      docChildren.push(new Paragraph({ text: `Grid: ${grid.name}`, heading: HeadingLevel.HEADING_2 }));
-
-      // Grid Info Table
-      const infoRows = [
-        new TableRow({ children: [createLabelCell('Label', 20), createValueCell(grid.label || '', 30), createLabelCell('Type', 20), createValueCell(grid.type || '', 30)] }),
-        new TableRow({ children: [createLabelCell('Tab', 20), createValueCell(grid.tab ? grid.tab.label : '', 30), createLabelCell('Ref', 20), createValueCell(grid.ref || '', 30)] }),
-        new TableRow({ children: [createLabelCell('Permissions', 20), createValueCell(`I:${grid.insertAllowed} U:${grid.updateAllowed} D:${grid.deleteAllowed}`, 80)] }),
-      ];
-      docChildren.push(new Table({ rows: infoRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-      docChildren.push(new Paragraph({ text: '', spacing: { after: 240 } }));
-
-      // Templates
-      const tplKeys = Object.keys(grid.templates);
-      if (tplKeys.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Templates', heading: HeadingLevel.HEADING_3 }));
-        tplKeys.forEach((key) => {
-          docChildren.push(new Paragraph({ text: key, bold: true, spacing: { before: 200 } }));
-          docChildren.push(createCodeBlock(grid.templates[key], 'sql'));
-        });
-      }
-
-      // RPC Expand
-      if (grid.rpcExpand) {
-        docChildren.push(new Paragraph({ text: 'RPC Expand', heading: HeadingLevel.HEADING_3 }));
-        docChildren.push(createCodeBlock(grid.rpcExpand, 'sql'));
-        if (grid.rpcExpandInitOrderBy) {
-          docChildren.push(new Paragraph({ text: `Init Order By: ${grid.rpcExpandInitOrderBy}`, spacing: { before: 100 } }));
-        }
-      }
-
-      // LOVs
-      if (grid.listOfValues.length > 0) {
-        docChildren.push(new Paragraph({ text: 'List Of Values', heading: HeadingLevel.HEADING_3 }));
-        grid.listOfValues.forEach((lov) => {
-          docChildren.push(new Paragraph({ text: `${lov.name} ${lov.label ? `(${lov.label})` : ''}`, bold: true, spacing: { before: 200 } }));
-          if (lov.value) docChildren.push(createCodeBlock(lov.value, 'sql'));
-          if (lov.initOrderBy) docChildren.push(new Paragraph({ text: `Order By: ${lov.initOrderBy}` }));
-        });
-      }
-
-      // Comboboxes
-      if (grid.comboboxes.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Comboboxes', heading: HeadingLevel.HEADING_3 }));
-        grid.comboboxes.forEach((combo) => {
-          docChildren.push(new Paragraph({ text: `${combo.name} ${combo.label ? `(${combo.label})` : ''}`, bold: true, spacing: { before: 200 } }));
-          if (combo.sqlValue) {
-            docChildren.push(createCodeBlock(combo.sqlValue, 'sql'));
-          } else if (combo.rows.length > 0) {
-            const comboRows = [new TableRow({ children: [createHeaderCell('ID'), createHeaderCell('Label')] })];
-            combo.rows.forEach((r) => comboRows.push(new TableRow({ children: [createValueCell(r.id), createValueCell(r.label)] })));
-            docChildren.push(new Table({ rows: comboRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-          }
-        });
-      }
-
-      // CheckAndSaveData
-      if (grid.checkAndSaveData) {
-        const ops = ['insert', 'update', 'delete'];
-        const hasData = ops.some((op) => grid.checkAndSaveData[op].length > 0);
-
-        if (hasData) {
-          docChildren.push(new Paragraph({ text: 'CheckAndSaveData', heading: HeadingLevel.HEADING_3 }));
-          ops.forEach((op) => {
-            if (grid.checkAndSaveData[op].length > 0) {
-              docChildren.push(new Paragraph({ text: op.charAt(0).toUpperCase() + op.slice(1), bold: true, spacing: { before: 200 } }));
-              grid.checkAndSaveData[op].forEach((sql) => {
-                docChildren.push(createCodeBlock(sql, 'sql'));
-              });
-            }
-          });
-        }
-      }
-
-      // Before Commit Validation
-      if (grid.beforeCommitValidation.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Before Commit Validation', heading: HeadingLevel.HEADING_3 }));
-        grid.beforeCommitValidation.forEach((bc) => {
-          docChildren.push(new Paragraph({ text: bc.name, bold: true, spacing: { before: 200 } }));
-          if (bc.function) docChildren.push(new Paragraph({ text: `Function: ${bc.function}` }));
-          if (bc.failMessage) docChildren.push(new Paragraph({ text: `Fail Message: ${bc.failMessage}`, color: '991B1B' }));
-          docChildren.push(createCodeBlock(bc.sql, 'sql'));
-        });
-      }
-
-      // Events
-      if (grid.events.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Events', heading: HeadingLevel.HEADING_3 }));
-        const sortedEvents = [...grid.events].sort((a, b) => {
-          const getPriority = (name) => {
-            const n = name.toLowerCase();
-            if (n.includes('whenexitchangedrecord')) return 1;
-            if (n.includes('whenfinishedit')) return 2;
-            if (n.includes('whenchangevalue')) return 3;
-            return 4;
-          };
-          return getPriority(a.name) - getPriority(b.name);
-        });
-
-        sortedEvents.forEach((evt) => {
-          const evtTitle = `${evt.name}${evt.context ? ` (Field: ${evt.context})` : ''}`;
-          docChildren.push(
-            new Paragraph({
-              children: [new TextRun({ text: evtTitle }), new TextRun({ text: evt.waitingWindow ? ' [Waiting Window]' : '', color: 'D97706', size: 20 })],
-              heading: HeadingLevel.HEADING_4,
-            })
-          );
-
-          if (evt.actionRefs.length > 0) {
-            docChildren.push(new Paragraph({ text: `Action Refs: ${evt.actionRefs.join(', ')}`, size: 20 }));
-          }
-
-          if (evt.groovyScripts.length > 0) {
-            evt.groovyScripts.forEach((action) => {
-              action.classes.forEach((cls) => {
-                docChildren.push(new Paragraph({ text: `>> ${cls.type} (${cls.className})`, size: 18, color: '6B7280', italics: true }));
-                docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
-              });
-            });
-          }
-        });
-      }
-
-      // Buttons
-      if (grid.bottomToolbarButtons.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Buttons', heading: HeadingLevel.HEADING_3 }));
-        grid.bottomToolbarButtons.forEach((btn) => {
-          docChildren.push(new Paragraph({ text: `[${btn.type}] ${btn.name} - ${btn.label}`, bold: true, spacing: { before: 200 } }));
-          if (btn.callFormName) docChildren.push(new Paragraph({ text: `CallForm: ${btn.callFormName}` }));
-
-          if (btn.params && btn.params.length > 0) {
-            const paramText = btn.params.map((p) => `${p.name}=${p.alias}`).join(', ');
-            docChildren.push(new Paragraph({ text: `Params: ${paramText}`, size: 20 }));
-          }
-
-          if (btn.groovyScripts.length > 0) {
-            btn.groovyScripts.forEach((action) => {
-              action.classes.forEach((cls) => {
-                docChildren.push(new Paragraph({ text: `>> ${cls.type} (${cls.className})`, size: 18, color: '6B7280', italics: true }));
-                docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
-              });
-            });
-          }
-        });
-      }
-
-      // Separatore Grid
-      docChildren.push(
-        new Paragraph({
-          text: '',
-          border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'E5E7EB' } },
-          spacing: { after: 480 },
-        })
-      );
-    });
-  }
-
-  // Creazione Documento
-  const doc = new Document({
-    styles: {
-      paragraphStyles: [
-        {
-          id: 'Heading1',
-          name: 'Heading 1',
-          basedOn: 'Normal',
-          next: 'Normal',
-          quickFormat: true,
-          run: { size: 32, bold: true, color: '1E40AF', font: 'Segoe UI' }, // 16pt Blue
-          paragraph: { spacing: { before: 400, after: 300 } },
-        },
-        {
-          id: 'Heading2',
-          name: 'Heading 2',
-          basedOn: 'Normal',
-          next: 'Normal',
-          quickFormat: true,
-          run: { size: 28, bold: true, color: '374151', font: 'Segoe UI' }, // 14pt Gray
-          paragraph: { spacing: { before: 300, after: 200 } },
-        },
-        {
-          id: 'Heading3',
-          name: 'Heading 3',
-          basedOn: 'Normal',
-          next: 'Normal',
-          quickFormat: true,
-          run: { size: 24, bold: true, color: '4B5563', font: 'Segoe UI' }, // 12pt Gray
-          paragraph: { spacing: { before: 240, after: 120 } },
-        },
-        {
-          id: 'Heading4',
-          name: 'Heading 4',
-          basedOn: 'Normal',
-          next: 'Normal',
-          quickFormat: true,
-          run: { size: 22, bold: true, color: '4F46E5', font: 'Segoe UI' }, // 11pt Indigo
-          paragraph: { spacing: { before: 200, after: 100 } },
-        },
-      ],
-    },
-    sections: [
-      {
-        properties: {},
-        children: docChildren,
-      },
-    ],
-  });
-
-  // Generazione e Download
-  try {
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, 'JBWT_Export.docx');
-  } catch (err) {
-    console.error('Errore durante la generazione del Word:', err);
-    alert('Errore durante la generazione del documento Word.');
-  }
-}
-
 function renderSection(title, key, count, content) {
   const displayTitle = count !== undefined ? `${title} (${count})` : title;
+  const isDone = progressData[key] === true;
+  const doneClass = isDone ? 'section-done' : '';
+
   return `
-          <div class="section">
+          <div class="section ${doneClass}">
               <button class="section-header" onclick="toggleSection('${key}')">
-                  <span>${displayTitle}</span>
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <input type="checkbox" ${isDone ? 'checked' : ''} onclick="toggleDone(event, '${key}')" title="Segna come completato" style="width:18px; height:18px; cursor:pointer;">
+                    <span>${displayTitle}</span>
+                  </div>
                   <span data-icon="${key}">▶</span>
               </button>
               <div class="section-content" data-section="${key}">
@@ -1565,6 +1151,33 @@ function renderGroovyScripts(scripts, prefix) {
 
   return content;
 }
+
+function loadProgress() {
+  if (!currentFilename) return;
+  const storageKey = `JBWT_PROGRESS_${currentFilename}`;
+  try {
+    const data = localStorage.getItem(storageKey);
+    progressData = data ? JSON.parse(data) : {};
+  } catch (e) {
+    console.error('Errore caricamento progressi:', e);
+    progressData = {};
+  }
+}
+
+window.toggleDone = function (event, key) {
+  event.stopPropagation();
+  const isChecked = event.target.checked;
+  progressData[key] = isChecked;
+
+  const storageKey = `JBWT_PROGRESS_${currentFilename}`;
+  localStorage.setItem(storageKey, JSON.stringify(progressData));
+
+  const section = event.target.closest('.section');
+  if (section) {
+    if (isChecked) section.classList.add('section-done');
+    else section.classList.remove('section-done');
+  }
+};
 
 function escapeHtml(text) {
   const div = document.createElement('div');
