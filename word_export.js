@@ -44,7 +44,8 @@ async function downloadWord() {
     if (!code) return new Paragraph('');
 
     let fillColor = 'F9FAFB'; // Default Gray
-    if (type === 'groovy') fillColor = 'FFF7ED'; // Light Orange
+    if (type === 'groovy')
+      fillColor = 'FFF7ED'; // Light Orange
     else if (type === 'sql') fillColor = 'EFF6FF'; // Light Blue
 
     return new Paragraph({
@@ -77,7 +78,7 @@ async function downloadWord() {
       heading: HeadingLevel.HEADING_1,
       alignment: AlignmentType.CENTER,
       spacing: { after: 400 }, // Spazio gestito dallo stile globale, ma questo è extra
-    })
+    }),
   );
 
   // --- INDICE ---
@@ -85,13 +86,13 @@ async function downloadWord() {
     new Paragraph({
       children: [new TextRun({ text: 'Indice', bold: true, size: 24 })],
       spacing: { after: 200 },
-    })
+    }),
   );
   docChildren.push(
     new TableOfContents('Sommario', {
       hyperlink: true,
       headingStyleRange: '1-3',
-    })
+    }),
   );
   docChildren.push(new Paragraph({ children: [new PageBreak()] }));
 
@@ -102,7 +103,7 @@ async function downloadWord() {
         spacing: { after: 400 },
         border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2563EB' } }, // Bordo blu a sinistra
         indent: { left: 200 },
-      })
+      }),
     );
   }
 
@@ -132,7 +133,7 @@ async function downloadWord() {
       new Paragraph({
         children: [new TextRun({ text: 'Action Refs: ', bold: true }), new TextRun(currentData.whenNewFormInstance.join(', '))],
         spacing: { after: 200 },
-      })
+      }),
     );
 
     if (currentData.whenNewFormInstanceGroovy.length > 0) {
@@ -223,7 +224,19 @@ async function downloadWord() {
         });
 
         const fieldRows = [fieldHeader];
-        grid.fields.forEach((f) => {
+
+        // Ordina i campi per order (asc) e poi horder (asc)
+        const sortedFields = [...grid.fields].sort((a, b) => {
+          const orderA = parseInt(a.order, 10) || 0;
+          const orderB = parseInt(b.order, 10) || 0;
+          if (orderA !== orderB) return orderA - orderB;
+
+          const horderA = parseInt(a.horder, 10) || 0;
+          const horderB = parseInt(b.horder, 10) || 0;
+          return horderA - horderB;
+        });
+
+        sortedFields.forEach((f) => {
           fieldRows.push(
             new TableRow({
               children: [
@@ -236,7 +249,7 @@ async function downloadWord() {
                 createValueCell(f.isEditable || '', 10),
                 createValueCell(f.isHidden || '', 10),
               ],
-            })
+            }),
           );
         });
 
@@ -318,7 +331,7 @@ async function downloadWord() {
             new Paragraph({
               children: [new TextRun({ text: evtTitle }), new TextRun({ text: evt.waitingWindow ? ' [Waiting Window]' : '', color: 'D97706', size: 20 })],
               heading: HeadingLevel.HEADING_4,
-            })
+            }),
           );
 
           if (evt.actionRefs.length > 0) {
@@ -331,7 +344,7 @@ async function downloadWord() {
                 docChildren.push(
                   new Paragraph({
                     children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })],
-                  })
+                  }),
                 );
                 docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
               });
@@ -358,7 +371,7 @@ async function downloadWord() {
                 docChildren.push(
                   new Paragraph({
                     children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })],
-                  })
+                  }),
                 );
                 docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
               });
@@ -385,7 +398,7 @@ async function downloadWord() {
                 docChildren.push(
                   new Paragraph({
                     children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })],
-                  })
+                  }),
                 );
                 docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
               });
@@ -400,7 +413,7 @@ async function downloadWord() {
           text: '',
           border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'E5E7EB' } },
           spacing: { after: 480 },
-        })
+        }),
       );
     });
   }

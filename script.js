@@ -253,6 +253,8 @@ function parseXML(xmlText) {
         isMandatory: field.getAttribute('isMandatory'),
         isEditable: field.getAttribute('isEditable'),
         isHidden: field.getAttribute('isHidden'),
+        order: field.getAttribute('order'),
+        horder: field.getAttribute('horder'),
       });
 
       const fEvents = extractEventsFromNode(field, gridActionsMap, fName);
@@ -646,11 +648,11 @@ function renderData(data) {
                               ${popup.grids.length > 0 ? popup.grids.map((g) => `<span class="badge badge-orange text-xs">${g}</span>`).join(' ') : 'Nessuno'}
                           </p>
                       </div>
-                  `
+                  `,
                     )
                     .join('')}
               </div>
-          `
+          `,
     );
   }
 
@@ -662,7 +664,7 @@ function renderData(data) {
       `
               <p class="text-sm mb-2"><span class="info-label">Actions:</span> ${data.whenNewFormInstance.join(', ')}</p>
               ${renderGroovyScripts(data.whenNewFormInstanceGroovy, 'form')}
-          `
+          `,
     );
   }
 
@@ -741,10 +743,10 @@ function renderData(data) {
                               <h4 class="info-label text-sm" style="color: #059669;">${tplName}</h4>
                               ${renderCodeBlock(grid.templates[tplName], `tpl-${idx}-${tplIdx}`)}
                           </div>
-                      `
+                      `,
                           )
                           .join('')
-                      : '<p class="text-gray">Nessun template definito</p>'
+                      : '<p class="text-gray">Nessun template definito</p>',
                   )}
 
                   ${renderSection(
@@ -765,7 +767,7 @@ function renderData(data) {
                               : ''
                           }
                       `
-                      : '<p class="text-gray">Non presente</p>'
+                      : '<p class="text-gray">Non presente</p>',
                   )}
 
                   ${renderSection('RPC Expand Init', `rpcinit-${idx}`, grid.rpcExpandInit ? 1 : 0, grid.rpcExpandInit ? renderCodeBlock(grid.rpcExpandInit, `rpcinit-${idx}`) : '<p class="text-gray">Non presente</p>')}
@@ -798,10 +800,10 @@ function renderData(data) {
                                   : ''
                               }
                           </div>
-                      `
+                      `,
                           )
                           .join('')
-                      : '<p class="text-gray">Nessuno presente</p>'
+                      : '<p class="text-gray">Nessuno presente</p>',
                   )}
 
                   ${renderSection(
@@ -832,7 +834,7 @@ function renderData(data) {
                                                   <td>${escapeHtml(row.id)}</td>
                                                   <td>${escapeHtml(row.label)}</td>
                                               </tr>
-                                          `
+                                          `,
                                             )
                                             .join('')}
                                       </tbody>
@@ -842,10 +844,10 @@ function renderData(data) {
                               }
                               ${combo.sqlValue ? renderCodeBlock(combo.sqlValue, `combo-${idx}-${comboIdx}`) : ''}
                           </div>
-                      `
+                      `,
                           )
                           .join('')
-                      : '<p class="text-gray">Nessuno presente</p>'
+                      : '<p class="text-gray">Nessuno presente</p>',
                   )}
 
                   ${renderSection(
@@ -863,11 +865,11 @@ function renderData(data) {
                                       ${grid.checkAndSaveData[op].map((sql, sqlIdx) => renderCodeBlock(sql, `check-${idx}-${op}-${sqlIdx}`)).join('')}
                                   </div>
                               `
-                                : ''
+                                : '',
                             )
                             .join('')}
                       `
-                      : '<p class="text-gray">Non presente</p>'
+                      : '<p class="text-gray">Non presente</p>',
                   )}
 
                   ${renderSection(
@@ -884,17 +886,17 @@ function renderData(data) {
                               <p class="text-xs mb-2"><span class="info-label">Fail Message:</span> ${bc.failMessage}</p>
                               ${renderCodeBlock(bc.sql, `before-${idx}-${bcIdx}`)}
                           </div>
-                      `
+                      `,
                           )
                           .join('')
-                      : '<p class="text-gray">Non presente</p>'
+                      : '<p class="text-gray">Non presente</p>',
                   )}
 
                   ${renderSection(
                     'Abilitazioni',
                     `events-abil-${idx}`,
                     evAbilitazioni.length,
-                    evAbilitazioni.length > 0 ? evAbilitazioni.map((evt, eIdx) => renderEventBlock(evt, idx, `abil-${eIdx}`)).join('') : '<p class="text-gray">Nessun evento di abilitazione</p>'
+                    evAbilitazioni.length > 0 ? evAbilitazioni.map((evt, eIdx) => renderEventBlock(evt, idx, `abil-${eIdx}`)).join('') : '<p class="text-gray">Nessun evento di abilitazione</p>',
                   )}
 
                   ${renderSection('Controlli', `events-ctrl-${idx}`, evControlli.length, evControlli.length > 0 ? evControlli.map((evt, eIdx) => renderEventBlock(evt, idx, `ctrl-${eIdx}`)).join('') : '<p class="text-gray">Nessun controllo</p>')}
@@ -946,10 +948,10 @@ function renderData(data) {
                                   : ''
                               }
                           </div>
-                      `
+                      `,
                           )
                           .join('')
-                      : '<p class="text-gray">Nessuno presente</p>'
+                      : '<p class="text-gray">Nessuno presente</p>',
                   )}
 
                   ${renderSection(
@@ -997,10 +999,10 @@ function renderData(data) {
                                   : ''
                               }
                           </div>
-                      `
+                      `,
                           )
                           .join('')
-                      : '<p class="text-gray">Nessuno presente</p>'
+                      : '<p class="text-gray">Nessuno presente</p>',
                   )}
               </div>
           `;
@@ -1134,7 +1136,7 @@ function renderGroovyScripts(scripts, prefix) {
                 })
                 .join('')}
           </div>
-      `
+      `,
     )
     .join('');
 
