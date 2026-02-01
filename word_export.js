@@ -48,15 +48,20 @@ async function downloadWord() {
       fillColor = 'FFF7ED'; // Light Orange
     else if (type === 'sql') fillColor = 'EFF6FF'; // Light Blue
 
+    // Divide il codice in righe per preservare i ritorni a capo
+    const lines = code.split(/\r?\n/);
+    const runs = lines.map((line, index) => {
+      return new TextRun({
+        text: line,
+        font: 'Courier New',
+        size: 18, // 9pt
+        color: '1F2937',
+        break: index < lines.length - 1 ? 1 : 0,
+      });
+    });
+
     return new Paragraph({
-      children: [
-        new TextRun({
-          text: code,
-          font: 'Courier New',
-          size: 18, // 9pt
-          color: '1F2937',
-        }),
-      ],
+      children: runs,
       spacing: { before: 120, after: 120 },
       border: {
         top: { style: BorderStyle.SINGLE, size: 1, color: 'E5E7EB' },
@@ -81,6 +86,16 @@ async function downloadWord() {
     }),
   );
 
+  // --- MODULE RANGE ---
+  if (currentData.moduleInfo) {
+    docChildren.push(
+      new Paragraph({
+        children: [new TextRun({ text: `Range Modulo ${currentData.moduleInfo.module}: `, bold: true, size: 24 }), new TextRun({ text: currentData.moduleInfo.range, size: 24 })],
+        spacing: { after: 200 },
+      }),
+    );
+  }
+
   // --- INDICE ---
   docChildren.push(
     new Paragraph({
@@ -99,12 +114,26 @@ async function downloadWord() {
   if (currentData.description) {
     docChildren.push(
       new Paragraph({
-        children: [new TextRun({ text: 'Descrizione: ', bold: true, size: 24 }), new TextRun({ text: currentData.description, size: 24 })],
+        children: [new TextRun({ text: 'Descrizione: ', bold: true, size: 24 }), new TextRun({ text: `${docTitle} - ${currentData.description}`, size: 24 })],
         spacing: { after: 400 },
         border: { left: { style: BorderStyle.SINGLE, size: 12, color: '2563EB' } }, // Bordo blu a sinistra
         indent: { left: 200 },
       }),
     );
+  }
+
+  // --- FORM PARAMETERS ---
+  if (currentData.formParams && currentData.formParams.length > 0) {
+    docChildren.push(new Paragraph({ text: 'Form Parameters', heading: HeadingLevel.HEADING_1 }));
+
+    const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Java Type'), createHeaderCell('Value')] })];
+
+    currentData.formParams.forEach((p) => {
+      paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.javaType), createValueCell(p.value)] }));
+    });
+
+    docChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+    docChildren.push(new Paragraph({ text: '', spacing: { after: 400 } }));
   }
 
   // --- POPUPS ---
@@ -138,10 +167,27 @@ async function downloadWord() {
 
     if (currentData.whenNewFormInstanceGroovy.length > 0) {
       currentData.whenNewFormInstanceGroovy.forEach((action) => {
+        docChildren.push(new Paragraph({ text: `Action: ${action.actionName}`, heading: HeadingLevel.HEADING_3 }));
         action.classes.forEach((cls) => {
-          docChildren.push(new Paragraph({ text: `Action: ${action.actionName} (${cls.type})`, heading: HeadingLevel.HEADING_3 }));
-          if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B' }));
-          docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+          if (cls.type === 'paramsList') {
+            docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, bold: true, size: 22, color: '374151' })], spacing: { before: 60 } }));
+            if (cls.params && cls.params.length > 0) {
+              const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
+              cls.params.forEach((p) => {
+                paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
+              });
+              docChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+            }
+          } else {
+            docChildren.push(
+              new Paragraph({
+                children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, bold: true, size: 22, color: '374151' })],
+                spacing: { before: 60 },
+              }),
+            );
+            if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B' }));
+            docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+          }
         });
       });
     }
@@ -213,13 +259,14 @@ async function downloadWord() {
         const fieldHeader = new TableRow({
           children: [
             createHeaderCell('Type', 10),
-            createHeaderCell('Name', 20),
-            createHeaderCell('Label', 20),
-            createHeaderCell('Hint', 15),
+            createHeaderCell('Name', 15),
+            createHeaderCell('Label', 15),
+            createHeaderCell('Hint', 10),
             createHeaderCell('Len', 5),
-            createHeaderCell('Mand', 10),
-            createHeaderCell('Edit', 10),
-            createHeaderCell('Hide', 10),
+            createHeaderCell('Mand', 5),
+            createHeaderCell('Edit', 5),
+            createHeaderCell('Hide', 5),
+            createHeaderCell('Regex', 30),
           ],
         });
 
@@ -237,17 +284,23 @@ async function downloadWord() {
         });
 
         sortedFields.forEach((f) => {
+          let regexText = '';
+          if (f.validRegex) {
+            regexText = `${f.validRegex.regex}\n${f.validRegex.message || ''}`;
+          }
+
           fieldRows.push(
             new TableRow({
               children: [
                 createValueCell(f.tag || '', 10),
-                createValueCell(f.name || '', 20),
-                createValueCell(f.label || '', 20),
-                createValueCell(f.hint || '', 15),
+                createValueCell(f.name || '', 15),
+                createValueCell(f.label || '', 15),
+                createValueCell(f.hint || '', 10),
                 createValueCell(f.length || '', 5),
-                createValueCell(f.isMandatory || '', 10),
-                createValueCell(f.isEditable || '', 10),
-                createValueCell(f.isHidden || '', 10),
+                createValueCell(f.isMandatory || '', 5),
+                createValueCell(f.isEditable || '', 5),
+                createValueCell(f.isHidden || '', 5),
+                createValueCell(regexText, 30),
               ],
             }),
           );
@@ -340,13 +393,27 @@ async function downloadWord() {
 
           if (evt.groovyScripts.length > 0) {
             evt.groovyScripts.forEach((action) => {
+              docChildren.push(
+                new Paragraph({
+                  children: [new TextRun({ text: `Action: ${action.actionName}`, size: 20, color: '1E40AF', bold: true })],
+                  spacing: { before: 100 },
+                }),
+              );
               action.classes.forEach((cls) => {
-                docChildren.push(
-                  new Paragraph({
-                    children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })],
-                  }),
-                );
-                docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+                if (cls.type === 'paramsList') {
+                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                  if (cls.params && cls.params.length > 0) {
+                    const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
+                    cls.params.forEach((p) => {
+                      paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
+                    });
+                    docChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+                  }
+                } else {
+                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                  if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
+                  docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+                }
               });
             });
           }
@@ -362,18 +429,32 @@ async function downloadWord() {
 
           if (btn.params && btn.params.length > 0) {
             const paramText = btn.params.map((p) => `${p.name}=${p.alias}`).join(', ');
-            docChildren.push(new Paragraph({ text: `Params: `, size: 20 }));
+            docChildren.push(new Paragraph({ text: `Params: ${paramText}`, size: 20 }));
           }
 
           if (btn.groovyScripts.length > 0) {
             btn.groovyScripts.forEach((action) => {
+              docChildren.push(
+                new Paragraph({
+                  children: [new TextRun({ text: `Action: ${action.actionName}`, size: 20, color: '1E40AF', bold: true })],
+                  spacing: { before: 100 },
+                }),
+              );
               action.classes.forEach((cls) => {
-                docChildren.push(
-                  new Paragraph({
-                    children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })],
-                  }),
-                );
-                docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+                if (cls.type === 'paramsList') {
+                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                  if (cls.params && cls.params.length > 0) {
+                    const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
+                    cls.params.forEach((p) => {
+                      paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
+                    });
+                    docChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+                  }
+                } else {
+                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                  if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
+                  docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+                }
               });
             });
           }
@@ -389,18 +470,32 @@ async function downloadWord() {
 
           if (btn.params && btn.params.length > 0) {
             const paramText = btn.params.map((p) => `${p.name}=${p.alias}`).join(', ');
-            docChildren.push(new Paragraph({ text: `Params: `, size: 20 }));
+            docChildren.push(new Paragraph({ text: `Params: ${paramText}`, size: 20 }));
           }
 
           if (btn.groovyScripts.length > 0) {
             btn.groovyScripts.forEach((action) => {
+              docChildren.push(
+                new Paragraph({
+                  children: [new TextRun({ text: `Action: ${action.actionName}`, size: 20, color: '1E40AF', bold: true })],
+                  spacing: { before: 100 },
+                }),
+              );
               action.classes.forEach((cls) => {
-                docChildren.push(
-                  new Paragraph({
-                    children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })],
-                  }),
-                );
-                docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+                if (cls.type === 'paramsList') {
+                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                  if (cls.params && cls.params.length > 0) {
+                    const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
+                    cls.params.forEach((p) => {
+                      paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
+                    });
+                    docChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+                  }
+                } else {
+                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                  if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
+                  docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+                }
               });
             });
           }

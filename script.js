@@ -4,6 +4,12 @@ let currentFilename = 'Estrazione_JBWT.xml';
 let rawXMLText = null;
 let progressData = {};
 
+let appSettings = {
+  ranges: [],
+  messages: {},
+};
+let gridVisibility = {};
+
 // Icona SVG per "copia" (due fogli)
 const COPY_ICON = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -24,6 +30,7 @@ function getDirectChild(element, tagName) {
 }
 
 async function loadDefaultXML() {
+  loadSettings(); // Carica impostazioni all'avvio
   const loadingEl = document.getElementById('loading');
   const errorEl = document.getElementById('error');
 
@@ -76,6 +83,65 @@ document.getElementById('excludeFilterFields').addEventListener('change', () => 
   }
 });
 
+// --- SETTINGS LOGIC ---
+function loadSettings() {
+  try {
+    const saved = localStorage.getItem('JBWT_APP_SETTINGS');
+    if (saved) {
+      appSettings = JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Errore caricamento settings:', e);
+  }
+}
+
+function openSettings() {
+  document.getElementById('settingsRanges').value = JSON.stringify(appSettings.ranges || [], null, 2);
+  document.getElementById('settingsMessages').value = JSON.stringify(appSettings.messages || {}, null, 2);
+  document.getElementById('settingsModal').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('open');
+}
+
+function saveSettings() {
+  try {
+    const rangesStr = document.getElementById('settingsRanges').value;
+    const messagesStr = document.getElementById('settingsMessages').value;
+
+    appSettings.ranges = rangesStr ? JSON.parse(rangesStr) : [];
+    appSettings.messages = messagesStr ? JSON.parse(messagesStr) : {};
+
+    localStorage.setItem('JBWT_APP_SETTINGS', JSON.stringify(appSettings));
+    closeSettings();
+
+    // Ricarica i dati se c'è un file caricato per applicare le nuove impostazioni
+    if (rawXMLText) {
+      const data = parseXML(rawXMLText);
+      renderData(data);
+    }
+  } catch (e) {
+    alert('Errore nel salvataggio JSON: ' + e.message);
+  }
+}
+
+function decodeJBWTMessage(text) {
+  if (!text) return text;
+  return text.replace(/@DB@(\d+)@DB@/g, (match, code) => {
+    const msg = appSettings.messages[code];
+    return msg ? `${code} - ${msg}` : match;
+  });
+}
+
+function getModuleRange(filename) {
+  if (!filename || !appSettings.ranges) return null;
+  const found = appSettings.ranges.find((r) => filename.toUpperCase().startsWith(r.module.toUpperCase()));
+  return found ? found : null;
+}
+
+// --- PARSING LOGIC ---
+
 function parseXML(xmlText) {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
@@ -93,12 +159,23 @@ function parseXML(xmlText) {
     description: null,
     whenNewFormInstance: [],
     whenNewFormInstanceGroovy: [],
+    moduleInfo: getModuleRange(currentFilename),
+    formParams: [],
   };
 
   const commentMatch = xmlText.match(/<!--[\s\S]*?Descrizione\.+:\s*(.+?)\s*-->/);
   if (commentMatch && commentMatch[1]) {
-    result.description = commentMatch[1].trim();
+    result.description = decodeJBWTMessage(commentMatch[1].trim());
   }
+
+  const formParamNodes = xmlDoc.querySelectorAll('form > params > param, form > param');
+  formParamNodes.forEach((p) => {
+    result.formParams.push({
+      name: p.getAttribute('name'),
+      javaType: p.getAttribute('javaType'),
+      value: p.textContent.trim(),
+    });
+  });
 
   const formWhenNew = xmlDoc.querySelector('form > events > whenNewFormInstance');
   if (formWhenNew) {
@@ -133,7 +210,7 @@ function parseXML(xmlText) {
 
     const popupData = {
       name: popup.getAttribute('name'),
-      title: popup.getAttribute('title'),
+      title: decodeJBWTMessage(popup.getAttribute('title')),
       width: popup.getAttribute('width'),
       height: popup.getAttribute('height'),
       callFormName: callFormName,
@@ -170,7 +247,7 @@ function parseXML(xmlText) {
 
     const gridData = {
       name: grid.getAttribute('name'),
-      label: grid.getAttribute('label'),
+      label: decodeJBWTMessage(grid.getAttribute('label')),
       type: grid.getAttribute('type'),
       ref: grid.getAttribute('ref'),
       insertAllowed: insertAttr !== null ? insertAttr : parsedCheckAndSaveData && parsedCheckAndSaveData.insert.length > 0 ? 'true' : 'false',
@@ -244,17 +321,32 @@ function parseXML(xmlText) {
       const fName = field.getAttribute('name');
       if (excludeFilter && fName && fName.endsWith('Filter')) return;
 
+      const validRegexNode = getDirectChild(field, 'validRegex');
+      let validRegex = null;
+      if (validRegexNode) {
+        const regexNode = validRegexNode.querySelector('regex');
+        const messageNode = validRegexNode.querySelector('message');
+        if (regexNode) {
+          validRegex = {
+            regex: regexNode.textContent.trim(),
+            match: regexNode.getAttribute('match'),
+            message: messageNode ? decodeJBWTMessage(messageNode.textContent.trim()) : null,
+          };
+        }
+      }
+
       gridData.fields.push({
         tag: field.tagName,
         name: fName,
-        label: field.getAttribute('label'),
-        hint: field.getAttribute('hint'),
+        label: decodeJBWTMessage(field.getAttribute('label')),
+        hint: decodeJBWTMessage(field.getAttribute('hint')),
         length: field.getAttribute('length'),
         isMandatory: field.getAttribute('isMandatory'),
         isEditable: field.getAttribute('isEditable'),
         isHidden: field.getAttribute('isHidden'),
         order: field.getAttribute('order'),
         horder: field.getAttribute('horder'),
+        validRegex: validRegex,
       });
 
       const fEvents = extractEventsFromNode(field, gridActionsMap, fName);
@@ -267,7 +359,7 @@ function parseXML(xmlText) {
       if (excludeFilter && name && name.endsWith('Filter')) return;
       const lovData = {
         name: name,
-        label: lov.getAttribute('label'),
+        label: decodeJBWTMessage(lov.getAttribute('label')),
         value: null,
         initOrderBy: null,
       };
@@ -288,7 +380,7 @@ function parseXML(xmlText) {
       if (excludeFilter && name && name.endsWith('Filter')) return;
       const comboData = {
         name: name,
-        label: combo.getAttribute('label'),
+        label: decodeJBWTMessage(combo.getAttribute('label')),
         rows: [],
         sqlValue: null,
       };
@@ -297,7 +389,7 @@ function parseXML(xmlText) {
       if (rows.length > 0) {
         rows.forEach((row) => {
           const id = row.querySelector('id')?.textContent || '';
-          const label = row.querySelector('label')?.textContent || '';
+          const label = decodeJBWTMessage(row.querySelector('label')?.textContent || '');
           comboData.rows.push({ id, label });
         });
       }
@@ -316,7 +408,7 @@ function parseXML(xmlText) {
         name: bc.getAttribute('name'),
         sql: bc.querySelector('param[name="sql"]')?.textContent.trim() || '',
         function: bc.querySelector('param[name="function"]')?.textContent.trim() || '',
-        failMessage: bc.querySelector('param[name="failMessage"]')?.textContent.trim() || '',
+        failMessage: decodeJBWTMessage(bc.querySelector('param[name="failMessage"]')?.textContent.trim() || ''),
       });
     });
 
@@ -359,7 +451,7 @@ function parseXML(xmlText) {
         gridData.topToolbarButtons.push({
           type: type,
           name: name,
-          label: btn.getAttribute('label') || btn.getAttribute('hint'),
+          label: decodeJBWTMessage(btn.getAttribute('label') || btn.getAttribute('hint')),
           order: btn.getAttribute('order'),
           callFormName: callFormName,
           actionRef: actionRefs,
@@ -404,7 +496,7 @@ function parseXML(xmlText) {
         gridData.bottomToolbarButtons.push({
           type: type,
           name: btn.getAttribute('name'),
-          label: btn.getAttribute('label') || btn.getAttribute('hint'),
+          label: decodeJBWTMessage(btn.getAttribute('label') || btn.getAttribute('hint')),
           order: btn.getAttribute('order'),
           callFormName: callFormName,
           actionRef: actionRefs,
@@ -464,25 +556,40 @@ function extractActions(rootNode, filterFn = null) {
       const failMessage = groovyClass.querySelector('param[name="failMessage"]')?.textContent.trim() || null;
 
       const groovyParam = groovyClass.querySelector('param[name="groovy"]');
+      const sqlParam = groovyClass.querySelector('param[name="sql"]');
+      const callFormParamsList = groovyClass.querySelector('callFormParamsList');
+
       if (groovyParam) {
         actionData.classes.push({
           type: 'groovy',
           className: className,
           classType: classType,
-          failMessage: failMessage,
+          failMessage: decodeJBWTMessage(failMessage),
           script: groovyParam.textContent.trim(),
         });
-      }
-
-      const sqlParam = groovyClass.querySelector('param[name="sql"]');
-      if (sqlParam) {
+      } else if (sqlParam) {
         actionData.classes.push({
           type: 'sql',
           className: className,
           classType: classType,
-          failMessage: failMessage,
+          failMessage: decodeJBWTMessage(failMessage),
           sql: sqlParam.textContent.trim(),
           function: groovyClass.querySelector('param[name="function"]')?.textContent.trim() || '',
+        });
+      } else if (callFormParamsList) {
+        const params = [];
+        const paramNodes = callFormParamsList.querySelectorAll('param');
+        paramNodes.forEach((p) => {
+          params.push({
+            name: p.getAttribute('name'),
+            alias: p.getAttribute('alias'),
+          });
+        });
+        actionData.classes.push({
+          type: 'paramsList',
+          className: className,
+          classType: classType,
+          params: params,
         });
       }
     });
@@ -592,22 +699,66 @@ async function copyAllScripts(btn) {
 
 function renderData(data) {
   loadProgress();
+  loadGridVisibility();
   currentData = data; // Salva i dati globalmente
   document.getElementById('searchInput').disabled = false;
   document.getElementById('downloadBtn').disabled = false;
   document.getElementById('downloadWordBtn').disabled = false;
+  document.getElementById('downloadTestBtn').disabled = false;
 
   const content = document.getElementById('content');
   const sidebar = document.getElementById('sidebar');
   let html = '';
 
+  const xmlCode = currentFilename.replace(/\.xml$/i, '');
+
   if (data.description) {
     html += `
               <div class="description-box">
-                  <h2>Descrizione Form</h2>
-                  <p>${data.description}</p>
+                  <h2>${xmlCode} - ${data.description}</h2>
               </div>
           `;
+  }
+
+  if (data.moduleInfo) {
+    html += `
+              <div class="description-box" style="background: #ecfdf5; border-color: #10b981;">
+                  <h2 style="color: #047857;">Range Modulo ${data.moduleInfo.module}</h2>
+                  <p><strong>Range previsto:</strong> ${data.moduleInfo.range}</p>
+              </div>
+          `;
+  }
+
+  if (data.formParams && data.formParams.length > 0) {
+    html += renderSection(
+      'Parametri Form',
+      'form-params',
+      data.formParams.length,
+      `
+        <table class="table" style="margin-top: 10px;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Java Type</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${data.formParams
+                  .map(
+                    (p) => `
+                    <tr>
+                        <td>${escapeHtml(p.name || '')}</td>
+                        <td>${escapeHtml(p.javaType || '')}</td>
+                        <td>${escapeHtml(p.value || '')}</td>
+                    </tr>
+                `,
+                  )
+                  .join('')}
+            </tbody>
+        </table>
+      `,
+    );
   }
 
   if (data.popups && data.popups.length > 0) {
@@ -669,7 +820,16 @@ function renderData(data) {
   }
 
   // Inizializza HTML Sidebar
-  let sidebarHtml = '<h3>📌 Indice Grids</h3><ul>';
+  const allVisible = data.grids.every((g) => gridVisibility[g.name] !== false);
+  let sidebarHtml = `
+      <h3>📌 Indice Grids</h3>
+      <div style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: #374151;">
+              <input type="checkbox" id="toggleAllGridsCheckbox" ${allVisible ? 'checked' : ''} onchange="toggleAllGrids(this)">
+              Seleziona/Deseleziona Tutto
+          </label>
+      </div>
+      <ul>`;
 
   data.grids.forEach((grid, idx) => {
     const hasTemplates = Object.keys(grid.templates).length > 0;
@@ -712,11 +872,22 @@ function renderData(data) {
       summaryBadgesHtml = `<div class="sidebar-summary">${summaryItems.join('')}</div>`;
     }
 
+    const isVisible = gridVisibility[grid.name] !== false;
+
     // Aggiungi voce alla sidebar
-    sidebarHtml += `<li><a href="#grid-${grid.name}"><div>📄 ${grid.name} ${grid.label ? `<span class="text-xs text-gray">(${grid.label})</span>` : ''}</div>${locationInfo}${summaryBadgesHtml}</a></li>`;
+    sidebarHtml += `<li>
+        <div style="display: flex; align-items: flex-start; gap: 8px;">
+            <input type="checkbox" data-grid="${grid.name}" ${isVisible ? 'checked' : ''} onchange="toggleGridVisibility(this)" style="margin-top: 8px; cursor: pointer;" title="Mostra/Nascondi Grid">
+            <a href="#grid-${grid.name}" style="flex: 1;">
+                <div>📄 ${grid.name} ${grid.label ? `<span class="text-xs text-gray">(${grid.label})</span>` : ''}</div>
+                ${locationInfo}
+                ${summaryBadgesHtml}
+            </a>
+        </div>
+    </li>`;
 
     html += `
-              <div class="grid-card" id="grid-${grid.name}" data-grid-name="${grid.name.toLowerCase()}">
+              <div class="grid-card" id="grid-${grid.name}" data-grid-name="${grid.name.toLowerCase()}" style="display: ${isVisible ? 'block' : 'none'};">
                   <div class="grid-header">
                       <h2>Grid: ${grid.name}</h2>
                       ${grid.label ? `<p class="text-sm text-gray"><span class="info-label">Label:</span> ${grid.label}</p>` : ''}
@@ -1028,7 +1199,10 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
 
   grids.forEach((card) => {
     const name = card.getAttribute('data-grid-name');
-    if (name.includes(term)) {
+    const originalName = card.id.replace('grid-', '');
+    const isVisibleByCheckbox = gridVisibility[originalName] !== false;
+
+    if (name.includes(term) && isVisibleByCheckbox) {
       card.style.display = 'block';
     } else {
       card.style.display = 'none';
@@ -1132,6 +1306,32 @@ function renderGroovyScripts(scripts, prefix) {
                       </div>
                     `;
                   }
+                  if (item.type === 'paramsList') {
+                    return `
+                      <div class="mb-2">
+                          <p class="text-xs text-gray mb-1">Class: ${item.className} ${item.classType ? `(${item.classType})` : ''}</p>
+                          <p class="text-xs text-gray mb-1">Type: Param List</p>
+                          ${
+                            item.params && item.params.length > 0
+                              ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
+                                      <p class="text-sm info-label">Parametri:</p>
+                                      <table class="table">
+                                          <thead>
+                                              <tr>
+                                                  <th>Name</th>
+                                                  <th>Alias</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                              ${item.params.map((p) => `<tr><td>${escapeHtml(p.name || '')}</td><td>${escapeHtml(p.alias || '')}</td></tr>`).join('')}
+                                          </tbody>
+                                      </table>
+                                   </div>`
+                              : ''
+                          }
+                      </div>
+                    `;
+                  }
                   return '';
                 })
                 .join('')}
@@ -1181,6 +1381,38 @@ window.toggleDone = function (event, key) {
   }
 };
 
+function loadGridVisibility() {
+  if (!currentFilename) return;
+  const key = `JBWT_VISIBILITY_${currentFilename}`;
+  try {
+    const saved = localStorage.getItem(key);
+    gridVisibility = saved ? JSON.parse(saved) : {};
+  } catch (e) {
+    console.error('Errore caricamento visibilità:', e);
+    gridVisibility = {};
+  }
+}
+
+window.toggleGridVisibility = function (checkbox) {
+  const gridName = checkbox.getAttribute('data-grid');
+  const isVisible = checkbox.checked;
+  gridVisibility[gridName] = isVisible;
+
+  const key = `JBWT_VISIBILITY_${currentFilename}`;
+  localStorage.setItem(key, JSON.stringify(gridVisibility));
+
+  // Aggiorna stato checkbox "Seleziona Tutto"
+  const allCheckboxes = document.querySelectorAll('#sidebar input[type="checkbox"][data-grid]');
+  const allChecked = Array.from(allCheckboxes).every((cb) => cb.checked);
+  const toggleAllCb = document.getElementById('toggleAllGridsCheckbox');
+  if (toggleAllCb) {
+    toggleAllCb.checked = allChecked;
+  }
+
+  // Rilancia la ricerca per applicare correttamente i filtri combinati
+  document.getElementById('searchInput').dispatchEvent(new Event('input'));
+};
+
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
@@ -1200,5 +1432,22 @@ window.onscroll = function () {
 function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+window.toggleAllGrids = function (sourceCheckbox) {
+  const isChecked = sourceCheckbox.checked;
+  const checkboxes = document.querySelectorAll('#sidebar input[type="checkbox"][data-grid]');
+
+  checkboxes.forEach((cb) => {
+    cb.checked = isChecked;
+    const gridName = cb.getAttribute('data-grid');
+    gridVisibility[gridName] = isChecked;
+  });
+
+  const key = `JBWT_VISIBILITY_${currentFilename}`;
+  localStorage.setItem(key, JSON.stringify(gridVisibility));
+
+  // Rilancia la ricerca per applicare correttamente i filtri combinati
+  document.getElementById('searchInput').dispatchEvent(new Event('input'));
+};
 
 loadDefaultXML();
