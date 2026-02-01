@@ -140,6 +140,87 @@ function getModuleRange(filename) {
   return found ? found : null;
 }
 
+function convertGroovyToPlSql(groovyCode) {
+  if (!groovyCode) return '';
+
+  const blockStack = [];
+
+  return groovyCode
+    .split('\n')
+    .map((line) => {
+      const indent = line.match(/^\s*/)[0];
+      let content = line.trim();
+
+      if (!content) return line;
+
+      // Commenti
+      if (content.startsWith('//')) return indent + content.replace('//', '--');
+
+      // Stringhe
+      content = content.replace(/"/g, "'");
+
+      // Operatori Logici e Confronto
+      content = content.replace(/&&/g, ' AND ').replace(/\|\|/g, ' OR ').replace(/!=/g, ' <> ').replace(/==/g, ' = ');
+
+      // Println -> DBMS_OUTPUT
+      if (content.startsWith('println')) {
+        content = content.replace(/^println\s*\(?(.*?)\)?(\s*;?)$/, 'DBMS_OUTPUT.PUT_LINE($1);');
+      }
+
+      // Assegnazioni (euristica semplice)
+      // def var = val -> var := val;
+      if (content.startsWith('def ')) {
+        content = content.replace(/^def\s+(\w+)\s*=\s*(.*)/, '$1 := $2;');
+      } else if (content.match(/^\w+\s*=\s*/) && !content.startsWith('if') && !content.startsWith('while') && !content.startsWith('for')) {
+        // var = val -> var := val; (solo se inizia con parola e =)
+        content = content.replace(/^(\w+)\s*=\s*(.*)/, '$1 := $2;');
+      }
+
+      // Strutture di controllo
+      if (content.startsWith('if')) {
+        content = content.replace(/^if\s*\((.*)\)\s*\{?$/, 'IF $1 THEN');
+        blockStack.push('IF');
+      } else if (content.startsWith('while')) {
+        content = content.replace(/^while\s*\((.*)\)\s*\{?$/, 'WHILE $1 LOOP');
+        blockStack.push('LOOP');
+      } else if (content.startsWith('for')) {
+        if (content.includes(' in ')) {
+          content = content.replace(/^for\s*\((.*)\s+in\s+(.*)\)\s*\{?$/, 'FOR $1 IN $2 LOOP');
+        } else {
+          content = content.replace(/^for\s*\((.*)\)\s*\{?$/, 'FOR $1 LOOP');
+        }
+        blockStack.push('LOOP');
+      } else if (content.match(/^\}\s*else\s*\{?$/) || content === '} else {') {
+        content = 'ELSE';
+      } else if (content === '}') {
+        const lastBlock = blockStack.pop();
+        content = lastBlock === 'LOOP' ? 'END LOOP;' : 'END IF;';
+      } else if (content.startsWith('return')) {
+        content = content.replace(/^return\s+(.*)/, 'RETURN $1;').replace(/^return;/, 'RETURN;');
+      }
+
+      // Aggiunta punto e virgola finale se manca e non è una keyword strutturale
+      if (
+        !content.endsWith(';') &&
+        !content.endsWith('THEN') &&
+        !content.endsWith('LOOP') &&
+        !content.endsWith('ELSE') &&
+        !content.startsWith('--') &&
+        !content.startsWith('BEGIN') &&
+        !content.startsWith('END') &&
+        content !== '{' &&
+        content !== '}'
+      ) {
+        content += ';';
+      }
+
+      return indent + content;
+    })
+    .join('\n')
+    .replace(/\{;/g, '')
+    .replace(/;;/g, ';');
+}
+
 // --- PARSING LOGIC ---
 
 function parseXML(xmlText) {
@@ -1265,10 +1346,20 @@ function renderEventBlock(evt, gridIdx, uniqueSuffix) {
 }
 
 function renderCodeBlock(code, id, lang = 'sql') {
-  // Updated to use the copy SVG icon directly
+  const isGroovy = lang === 'groovy';
+  const convertBtn = isGroovy
+    ? `
+    <button class="copy-btn convert-btn" style="right: 40px;" onclick="togglePlSql(this, '${id}')" title="Converti in PL/SQL">
+      🔄
+    </button>
+    <textarea id="${id}-raw" class="hidden">${escapeHtml(code)}</textarea>
+  `
+    : '';
+
   return `
           <div class="code-block-wrapper">
-              <pre class="code-block language-${lang}"><code class="language-${lang}">${escapeHtml(code)}</code></pre>
+              <pre class="code-block language-${lang}" id="${id}-code"><code class="language-${lang}">${escapeHtml(code)}</code></pre>
+              ${convertBtn}
               <button class="copy-btn" data-copy="${id}" onclick="copyToClipboard(this, '${id}')">
                   ${COPY_ICON}
               </button>
@@ -1448,6 +1539,29 @@ window.toggleAllGrids = function (sourceCheckbox) {
 
   // Rilancia la ricerca per applicare correttamente i filtri combinati
   document.getElementById('searchInput').dispatchEvent(new Event('input'));
+};
+
+window.togglePlSql = function (btn, id) {
+  const codeBlock = document.getElementById(`${id}-code`);
+  const rawTextarea = document.getElementById(`${id}-raw`);
+  const isConverted = btn.classList.contains('active');
+
+  if (!isConverted) {
+    const groovyCode = rawTextarea.value;
+    const plsqlCode = convertGroovyToPlSql(groovyCode);
+    codeBlock.innerHTML = `<code class="language-sql">${escapeHtml(plsqlCode)}</code>`;
+    btn.classList.add('active');
+    btn.style.backgroundColor = '#dbeafe'; // Highlight button
+  } else {
+    codeBlock.innerHTML = `<code class="language-groovy">${escapeHtml(rawTextarea.value)}</code>`;
+    btn.classList.remove('active');
+    btn.style.backgroundColor = ''; // Reset button
+  }
+
+  // Rilancia Prism per evidenziare la sintassi
+  if (window.Prism) {
+    Prism.highlightElement(codeBlock.querySelector('code'));
+  }
 };
 
 loadDefaultXML();

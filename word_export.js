@@ -2,6 +2,8 @@
 async function downloadWord() {
   if (!currentData || !window.docx) return;
 
+  const convertGroovy = confirm('Vuoi convertire gli script Groovy in PL/SQL?');
+
   const docTitle = currentFilename.replace(/\.xml$/i, '');
 
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, ShadingType, TableOfContents, PageBreak } = window.docx;
@@ -72,6 +74,17 @@ async function downloadWord() {
       shading: { fill: fillColor, type: ShadingType.CLEAR },
       indent: { left: 100, right: 100 },
     });
+  };
+
+  // Helper per processare il blocco di codice (con eventuale conversione)
+  const processCodeBlock = (cls) => {
+    let codeText = cls.script || cls.sql;
+    let codeType = cls.type;
+    if (convertGroovy && cls.type === 'groovy' && typeof convertGroovyToPlSql === 'function') {
+      codeText = convertGroovyToPlSql(codeText);
+      codeType = 'sql';
+    }
+    return createCodeBlock(codeText, codeType);
   };
 
   const docChildren = [];
@@ -186,7 +199,7 @@ async function downloadWord() {
               }),
             );
             if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B' }));
-            docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+            docChildren.push(processCodeBlock(cls));
           }
         });
       });
@@ -412,7 +425,7 @@ async function downloadWord() {
                 } else {
                   docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
                   if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
-                  docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+                  docChildren.push(processCodeBlock(cls));
                 }
               });
             });
@@ -453,7 +466,7 @@ async function downloadWord() {
                 } else {
                   docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
                   if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
-                  docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+                  docChildren.push(processCodeBlock(cls));
                 }
               });
             });
@@ -494,7 +507,7 @@ async function downloadWord() {
                 } else {
                   docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
                   if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
-                  docChildren.push(createCodeBlock(cls.script || cls.sql, cls.type));
+                  docChildren.push(processCodeBlock(cls));
                 }
               });
             });

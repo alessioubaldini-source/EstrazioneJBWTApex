@@ -289,6 +289,11 @@ h1 {
   background-color: #ecfdf5;
 }
 
+.convert-btn.active {
+  color: #1e40af;
+  border-color: #93c5fd;
+}
+
 .info-label {
   font-weight: 600;
   margin-right: 4px;
