@@ -653,3 +653,26 @@ pre[class*='language-'] {
 .btn-primary:hover {
   background: #1d4ed8;
 }
+
+.grid-card.grid-done {
+  border-left: 4px solid #10b981;
+}
+
+.grid-card.grid-done .grid-header {
+  background-color: #f0fdf4;
+}
+
+.grid-card.collapsed .grid-content {
+  display: none;
+}
+
+.sidebar li.grid-done a {
+  background-color: #ecfdf5;
+  color: #065f46;
+  font-weight: 600;
+}
+
+.sidebar li.grid-done {
+  border-left: 3px solid #10b981;
+  border-radius: 4px;
+}

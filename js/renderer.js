@@ -1,0 +1,622 @@
+function renderData(data) {
+  loadProgress();
+  currentData = data; // Salva i dati globalmente
+  document.getElementById('searchInput').disabled = false;
+  document.getElementById('downloadBtn').disabled = false;
+  document.getElementById('downloadWordBtn').disabled = false;
+  document.getElementById('downloadTestBtn').disabled = false;
+  document.getElementById('downloadApexBtn').disabled = false;
+
+  const content = document.getElementById('content');
+  const sidebar = document.getElementById('sidebar');
+  let html = '';
+
+  const xmlCode = currentFilename.replace(/\.xml$/i, '');
+
+  if (data.description) {
+    html += `
+              <div class="description-box">
+                  <h2>${xmlCode} - ${data.description}</h2>
+              </div>
+          `;
+  }
+
+  if (data.moduleInfo) {
+    html += `
+              <div class="description-box" style="background: #ecfdf5; border-color: #10b981;">
+                  <h2 style="color: #047857;">Range Modulo ${data.moduleInfo.module}</h2>
+                  <p><strong>Range previsto:</strong> ${data.moduleInfo.range}</p>
+              </div>
+          `;
+  }
+
+  if (data.formParams && data.formParams.length > 0) {
+    html += renderSection(
+      'Parametri Form',
+      'form-params',
+      data.formParams.length,
+      `
+        <table class="table" style="margin-top: 10px;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Java Type</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${data.formParams
+                  .map(
+                    (p) => `
+                    <tr>
+                        <td>${escapeHtml(p.name || '')}</td>
+                        <td>${escapeHtml(p.javaType || '')}</td>
+                        <td>${escapeHtml(p.value || '')}</td>
+                    </tr>
+                `,
+                  )
+                  .join('')}
+            </tbody>
+        </table>
+      `,
+    );
+  }
+
+  if (data.popups && data.popups.length > 0) {
+    html += renderSection(
+      'Popups',
+      'popups-section',
+      data.popups.length,
+      `
+              <div class="grid-card">
+                  ${data.popups
+                    .map(
+                      (popup) => `
+                      <div class="popup-card">
+                          <h3 class="info-label text-lg mb-2" style="font-size: 1.125rem; color: #c2410c;">${popup.name}</h3>
+                          <p class="text-sm mb-1"><span class="info-label">Title:</span> ${popup.title || 'N/A'}</p>
+                          ${popup.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${popup.callFormName}</p>` : ''}
+                          ${
+                            popup.params && popup.params.length > 0
+                              ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
+                                  <p class="text-sm info-label">Parametri:</p>
+                                  <table class="table">
+                                      <thead>
+                                          <tr>
+                                              <th>Name</th>
+                                              <th>Alias</th>
+                                          </tr>
+                                      </thead>
+                                      <tbody>
+                                          ${popup.params.map((p) => `<tr><td>${escapeHtml(p.name || '')}</td><td>${escapeHtml(p.alias || '')}</td></tr>`).join('')}
+                                      </tbody>
+                                  </table>
+                               </div>`
+                              : ''
+                          }
+                          <p class="text-sm mb-1"><span class="info-label">Dimensioni:</span> ${popup.width} x ${popup.height}</p>
+                          <p class="text-sm mb-1">
+                              <span class="info-label">Grids:</span> 
+                              ${popup.grids.length > 0 ? popup.grids.map((g) => `<span class="badge badge-orange text-xs">${g}</span>`).join(' ') : 'Nessuno'}
+                          </p>
+                      </div>
+                  `,
+                    )
+                    .join('')}
+              </div>
+          `,
+    );
+  }
+
+  if (data.whenNewFormInstance.length > 0) {
+    html += renderSection(
+      'When New Form Instance',
+      'form-whenNew',
+      data.whenNewFormInstance.length,
+      `
+              <p class="text-sm mb-2"><span class="info-label">Actions:</span> ${data.whenNewFormInstance.join(', ')}</p>
+              ${renderGroovyScripts(data.whenNewFormInstanceGroovy, 'form')}
+          `,
+    );
+  }
+
+  // Inizializza HTML Sidebar
+  let sidebarHtml = `
+      <h3>📌 Indice Grids</h3>
+      <ul>`;
+
+  data.grids.forEach((grid, idx) => {
+    const hasTemplates = Object.keys(grid.templates).length > 0;
+
+    // Raggruppamento Eventi
+    const evAbilitazioni = grid.events.filter((e) => ['whennewforminstance', 'whennewrecordinstance', 'whenrecordfetched'].includes(e.name.toLowerCase()));
+
+    const evControlli = grid.events.filter((e) => ['whenexitchangedrecord', 'whenfinisheditvalue'].includes(e.name.toLowerCase()));
+
+    const evAltri = grid.events.filter((e) => !evAbilitazioni.includes(e) && !evControlli.includes(e));
+
+    // Determina posizione (Tab o Popup)
+    let locationInfo = '';
+    if (grid.tab) {
+      locationInfo = `<div class="sidebar-grid-location is-tab">Tab: ${grid.tab.label || grid.tab.name}</div>`;
+    } else {
+      const popup = data.popups.find((p) => p.grids.includes(grid.name));
+      if (popup) {
+        locationInfo = `<div class="sidebar-grid-location is-popup">Popup: ${popup.name}</div>`;
+      }
+    }
+
+    // Crea badges riepilogativi per la sidebar
+    let summaryBadgesHtml = '';
+    const summaryItems = [];
+    if (evAbilitazioni.length > 0) {
+      summaryItems.push(`<span class="summary-badge sb-abil" title="Abilitazioni">Abil (${evAbilitazioni.length})</span>`);
+    }
+    if (evControlli.length > 0) {
+      summaryItems.push(`<span class="summary-badge sb-ctrl" title="Controlli">Ctrl (${evControlli.length})</span>`);
+    }
+    if (grid.listOfValues.length > 0) {
+      summaryItems.push(`<span class="summary-badge sb-lov" title="List Of Values">LOV (${grid.listOfValues.length})</span>`);
+    }
+    if (grid.comboboxes.length > 0) {
+      summaryItems.push(`<span class="summary-badge sb-combo" title="Combobox">Combo (${grid.comboboxes.length})</span>`);
+    }
+
+    if (summaryItems.length > 0) {
+      summaryBadgesHtml = `<div class="sidebar-summary">${summaryItems.join('')}</div>`;
+    }
+
+    const isGridDone = progressData[`grid-done-${grid.name}`] === true;
+
+    // Aggiungi voce alla sidebar
+    sidebarHtml += `<li data-grid-name="${grid.name}" class="${isGridDone ? 'grid-done' : ''}">
+        <div style="display: flex; align-items: flex-start; gap: 8px;">
+            <a href="#grid-${grid.name}" style="flex: 1;">
+                <div>📄 ${grid.name} ${grid.label ? `<span class="text-xs text-gray">(${grid.label})</span>` : ''}</div>
+                ${locationInfo}
+                ${summaryBadgesHtml}
+            </a>
+        </div>
+    </li>`;
+
+    html += `
+              <div class="grid-card ${isGridDone ? 'grid-done collapsed' : ''}" id="grid-${grid.name}" data-grid-name="${grid.name.toLowerCase()}">
+                  <div class="grid-header">
+                      <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" ${isGridDone ? 'checked' : ''} onclick="toggleGridDone(event, '${grid.name}')" title="Segna la grid come completata" style="width:18px; height:18px; cursor:pointer;">
+                        <h2>Grid: ${grid.name}</h2>
+                      </div>
+                      ${grid.label ? `<p class="text-sm text-gray"><span class="info-label">Label:</span> ${grid.label}</p>` : ''}
+                      <div class="badge-container">
+                          ${grid.tab ? `<span class="badge badge-purple"><span class="info-label">Tab:</span> ${grid.tab.label} (${grid.tab.name})</span>` : ''}
+                          ${grid.type ? `<span class="badge badge-blue"><span class="info-label">Type:</span> ${grid.type}</span>` : ''}
+                          ${grid.ref ? `<span class="badge badge-gray"><span class="info-label">Ref:</span> ${grid.ref}</span>` : ''}
+                          <span class="badge ${grid.insertAllowed === 'true' ? 'badge-green' : 'badge-red'}"><span class="info-label">Insert:</span> ${grid.insertAllowed}</span>
+                          <span class="badge ${grid.updateAllowed === 'true' ? 'badge-green' : 'badge-red'}"><span class="info-label">Update:</span> ${grid.updateAllowed}</span>
+                          <span class="badge ${grid.deleteAllowed === 'true' ? 'badge-green' : 'badge-red'}"><span class="info-label">Delete:</span> ${grid.deleteAllowed}</span>
+                      </div>
+                  </div>
+
+                  <div class="grid-content">
+                  ${renderSection(
+                    'Templates',
+                    `tpl-${idx}`,
+                    Object.keys(grid.templates).length,
+                    hasTemplates
+                      ? Object.keys(grid.templates)
+                          .map(
+                            (tplName, tplIdx) => `
+                          <div class="mb-3">
+                              <h4 class="info-label text-sm" style="color: #059669;">${tplName}</h4>
+                              ${renderCodeBlock(grid.templates[tplName], `tpl-${idx}-${tplIdx}`)}
+                          </div>
+                      `,
+                          )
+                          .join('')
+                      : '<p class="text-gray">Nessun template definito</p>',
+                  )}
+
+                  ${renderSection(
+                    'RPC Expand',
+                    `rpc-${idx}`,
+                    grid.rpcExpand ? 1 : 0,
+                    grid.rpcExpand
+                      ? `
+                          ${renderCodeBlock(grid.rpcExpand, `rpc-${idx}`)}
+                          ${
+                            grid.rpcExpandInitOrderBy
+                              ? `
+                              <div class="order-by-box">
+                                  <p class="text-sm info-label">Init Order By:</p>
+                                  <code>${grid.rpcExpandInitOrderBy}</code>
+                              </div>
+                          `
+                              : ''
+                          }
+                      `
+                      : '<p class="text-gray">Non presente</p>',
+                  )}
+
+                  ${renderSection('RPC Expand Init', `rpcinit-${idx}`, grid.rpcExpandInit ? 1 : 0, grid.rpcExpandInit ? renderCodeBlock(grid.rpcExpandInit, `rpcinit-${idx}`) : '<p class="text-gray">Non presente</p>')}
+
+                  ${renderSection(
+                    'List Of Values',
+                    `lov-${idx}`,
+                    grid.listOfValues.length,
+                    grid.listOfValues.length > 0
+                      ? grid.listOfValues
+                          .map(
+                            (lov, lovIdx) => `
+                          <div class="mb-3">
+                              <h4 class="info-label">${lov.name}${lov.label ? ` - ${lov.label}` : ''}</h4>
+                              ${
+                                lov.value
+                                  ? `
+                                  ${renderCodeBlock(lov.value, `lov-${idx}-${lovIdx}`)}
+                                  ${
+                                    lov.initOrderBy
+                                      ? `
+                                      <div class="order-by-box green">
+                                          <p class="text-sm info-label">Init Order By:</p>
+                                          <code>${lov.initOrderBy}</code>
+                                      </div>
+                                  `
+                                      : ''
+                                  }
+                              `
+                                  : ''
+                              }
+                          </div>
+                      `,
+                          )
+                          .join('')
+                      : '<p class="text-gray">Nessuno presente</p>',
+                  )}
+
+                  ${renderSection(
+                    'Combobox',
+                    `combo-${idx}`,
+                    grid.comboboxes.length,
+                    grid.comboboxes.length > 0
+                      ? grid.comboboxes
+                          .map(
+                            (combo, comboIdx) => `
+                          <div class="mb-3">
+                              <h4 class="info-label">${combo.name}${combo.label ? ` - ${combo.label}` : ''}</h4>
+                              ${
+                                combo.rows.length > 0
+                                  ? `
+                                  <table class="table">
+                                      <thead>
+                                          <tr>
+                                              <th>ID</th>
+                                              <th>Label</th>
+                                          </tr>
+                                      </thead>
+                                      <tbody>
+                                          ${combo.rows
+                                            .map(
+                                              (row) => `
+                                              <tr>
+                                                  <td>${escapeHtml(row.id)}</td>
+                                                  <td>${escapeHtml(row.label)}</td>
+                                              </tr>
+                                          `,
+                                            )
+                                            .join('')}
+                                      </tbody>
+                                  </table>
+                              `
+                                  : ''
+                              }
+                              ${combo.sqlValue ? renderCodeBlock(combo.sqlValue, `combo-${idx}-${comboIdx}`) : ''}
+                          </div>
+                      `,
+                          )
+                          .join('')
+                      : '<p class="text-gray">Nessuno presente</p>',
+                  )}
+
+                  ${renderSection(
+                    'CheckAndSaveData',
+                    `check-${idx}`,
+                    grid.checkAndSaveData ? 1 : 0,
+                    grid.checkAndSaveData
+                      ? `
+                          ${['insert', 'update', 'delete']
+                            .map((op) =>
+                              grid.checkAndSaveData[op].length > 0
+                                ? `
+                                  <div class="mb-3">
+                                      <h4 class="info-label" style="text-transform: capitalize;">${op}</h4>
+                                      ${grid.checkAndSaveData[op].map((sql, sqlIdx) => renderCodeBlock(sql, `check-${idx}-${op}-${sqlIdx}`)).join('')}
+                                  </div>
+                              `
+                                : '',
+                            )
+                            .join('')}
+                      `
+                      : '<p class="text-gray">Non presente</p>',
+                  )}
+
+                  ${renderSection(
+                    'Before Commit Validation',
+                    `before-${idx}`,
+                    grid.beforeCommitValidation.length,
+                    grid.beforeCommitValidation.length > 0
+                      ? grid.beforeCommitValidation
+                          .map(
+                            (bc, bcIdx) => `
+                          <div class="mb-3">
+                              <h4 class="info-label">${bc.name}</h4>
+                              <p class="text-xs mb-1"><span class="info-label">Function:</span> ${bc.function}</p>
+                              <p class="text-xs mb-2"><span class="info-label">Fail Message:</span> ${bc.failMessage}</p>
+                              ${renderCodeBlock(bc.sql, `before-${idx}-${bcIdx}`)}
+                          </div>
+                      `,
+                          )
+                          .join('')
+                      : '<p class="text-gray">Non presente</p>',
+                  )}
+
+                  ${renderSection(
+                    'Abilitazioni',
+                    `events-abil-${idx}`,
+                    evAbilitazioni.length,
+                    evAbilitazioni.length > 0 ? evAbilitazioni.map((evt, eIdx) => renderEventBlock(evt, idx, `abil-${eIdx}`)).join('') : '<p class="text-gray">Nessun evento di abilitazione</p>',
+                  )}
+
+                  ${renderSection('Controlli', `events-ctrl-${idx}`, evControlli.length, evControlli.length > 0 ? evControlli.map((evt, eIdx) => renderEventBlock(evt, idx, `ctrl-${eIdx}`)).join('') : '<p class="text-gray">Nessun controllo</p>')}
+
+                  ${renderSection('Altri Eventi', `events-other-${idx}`, evAltri.length, evAltri.length > 0 ? evAltri.map((evt, eIdx) => renderEventBlock(evt, idx, `other-${eIdx}`)).join('') : '<p class="text-gray">Nessun altro evento</p>')}
+
+                  ${renderSection(
+                    'Top Toolbar Buttons',
+                    `topbuttons-${idx}`,
+                    grid.topToolbarButtons.length,
+                    grid.topToolbarButtons.length > 0
+                      ? grid.topToolbarButtons
+                          .map(
+                            (btn, btnIdx) => `
+                          <div class="mb-3" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
+                              <p class="text-sm mb-1"><span class="badge badge-blue text-xs">${btn.type}</span></p>
+                              <p class="text-sm mb-1"><span class="info-label">Name:</span> ${btn.name}</p>
+                              <p class="text-sm mb-1"><span class="info-label">Label:</span> ${btn.label}</p>
+                              <p class="text-sm mb-1"><span class="info-label">Order:</span> ${btn.order}</p>
+                              ${btn.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${btn.callFormName}</p>` : ''}
+                              ${
+                                btn.params && btn.params.length > 0
+                                  ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
+                                      <p class="text-sm info-label">Parametri:</p>
+                                      <table class="table">
+                                          <thead>
+                                              <tr>
+                                                  <th>Name</th>
+                                                  <th>Alias</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                              ${btn.params.map((p) => `<tr><td>${escapeHtml(p.name || '')}</td><td>${escapeHtml(p.alias || '')}</td></tr>`).join('')}
+                                          </tbody>
+                                      </table>
+                                   </div>`
+                                  : ''
+                              }
+                              <p class="text-sm mb-2"><span class="info-label">ActionRef:</span> ${btn.actionRef.join(', ') || 'Nessuno'}</p>
+                              
+                              ${
+                                btn.groovyScripts.length > 0
+                                  ? `
+                                  <div style="margin-top: 12px;">
+                                      <p class="text-sm info-label" style="color: #4f46e5;">Script Actions:</p>
+                                      ${renderGroovyScripts(btn.groovyScripts, `topbtn-groovy-${idx}-${btnIdx}`)}
+                                  </div>
+                              `
+                                  : ''
+                              }
+                          </div>
+                      `,
+                          )
+                          .join('')
+                      : '<p class="text-gray">Nessuno presente</p>',
+                  )}
+
+                  ${renderSection(
+                    'Bottom Toolbar Buttons',
+                    `buttons-${idx}`,
+                    grid.bottomToolbarButtons.length,
+                    grid.bottomToolbarButtons.length > 0
+                      ? grid.bottomToolbarButtons
+                          .map(
+                            (btn, btnIdx) => `
+                          <div class="mb-3" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
+                              <p class="text-sm mb-1"><span class="badge badge-blue text-xs">${btn.type}</span></p>
+                              <p class="text-sm mb-1"><span class="info-label">Name:</span> ${btn.name}</p>
+                              <p class="text-sm mb-1"><span class="info-label">Label:</span> ${btn.label}</p>
+                              <p class="text-sm mb-1"><span class="info-label">Order:</span> ${btn.order}</p>
+                              ${btn.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${btn.callFormName}</p>` : ''}
+                              ${
+                                btn.params && btn.params.length > 0
+                                  ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
+                                      <p class="text-sm info-label">Parametri:</p>
+                                      <table class="table">
+                                          <thead>
+                                              <tr>
+                                                  <th>Name</th>
+                                                  <th>Alias</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                              ${btn.params.map((p) => `<tr><td>${escapeHtml(p.name || '')}</td><td>${escapeHtml(p.alias || '')}</td></tr>`).join('')}
+                                          </tbody>
+                                      </table>
+                                   </div>`
+                                  : ''
+                              }
+                              <p class="text-sm mb-2"><span class="info-label">ActionRef:</span> ${btn.actionRef.join(', ') || 'Nessuno'}</p>
+                              
+                              ${
+                                btn.groovyScripts.length > 0
+                                  ? `
+                                  <div style="margin-top: 12px;">
+                                      <p class="text-sm info-label" style="color: #4f46e5;">Script Actions:</p>
+                                      ${renderGroovyScripts(btn.groovyScripts, `btn-groovy-${idx}-${btnIdx}`)}
+                                  </div>
+                              `
+                                  : ''
+                              }
+                          </div>
+                      `,
+                          )
+                          .join('')
+                      : '<p class="text-gray">Nessuno presente</p>',
+                  )}
+                  </div>
+              </div>
+          `;
+  });
+
+  content.innerHTML = html;
+
+  // Render Sidebar
+  sidebarHtml += '</ul>';
+  sidebar.innerHTML = sidebarHtml;
+  sidebar.classList.remove('hidden');
+
+  // Attiva Syntax Highlighting
+  if (window.Prism) {
+    Prism.highlightAll();
+  }
+}
+
+function renderSection(title, key, count, content) {
+  const displayTitle = count !== undefined ? `${title} (${count})` : title;
+  const isDone = progressData[key] === true;
+  const doneClass = isDone ? 'section-done' : '';
+
+  return `
+          <div class="section ${doneClass}">
+              <button class="section-header" onclick="toggleSection('${key}')">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <input type="checkbox" ${isDone ? 'checked' : ''} onclick="toggleDone(event, '${key}')" title="Segna come completato" style="width:18px; height:18px; cursor:pointer;">
+                    <span>${displayTitle}</span>
+                  </div>
+                  <span data-icon="${key}">▶</span>
+              </button>
+              <div class="section-content" data-section="${key}">
+                  ${content}
+              </div>
+          </div>
+      `;
+}
+
+function renderEventBlock(evt, gridIdx, uniqueSuffix) {
+  return `
+      <div class="mb-3" style="border-left: 3px solid #6366f1; padding-left: 12px;">
+          <h4 class="info-label mb-1 text-indigo-700">${evt.name} ${evt.context ? `<span class="text-xs text-gray" style="font-weight:normal;">(Field: ${evt.context})</span>` : ''}</h4>
+          ${evt.waitingWindow ? `<span class="badge badge-yellow text-xs mb-2">Waiting Window</span>` : ''}
+          <p class="text-xs mb-2 mt-1"><span class="info-label">Action Refs:</span> ${evt.actionRefs.join(', ') || 'Nessuna'}</p>
+          ${renderGroovyScripts(evt.groovyScripts, `evt-${gridIdx}-${uniqueSuffix}`)}
+      </div>
+  `;
+}
+
+function renderCodeBlock(code, id, lang = 'sql') {
+  const isGroovy = lang === 'groovy';
+  const convertBtn = isGroovy
+    ? `
+    <button class="copy-btn convert-btn" style="right: 40px;" onclick="togglePlSql(this, '${id}')" title="Converti in PL/SQL">
+      🔄
+    </button>
+    <textarea id="${id}-raw" class="hidden">${escapeHtml(code)}</textarea>
+  `
+    : '';
+
+  return `
+          <div class="code-block-wrapper">
+              <pre class="code-block language-${lang}" id="${id}-code"><code class="language-${lang}">${escapeHtml(code)}</code></pre>
+              ${convertBtn}
+              <button class="copy-btn" data-copy="${id}" onclick="copyToClipboard(this, '${id}')">
+                  ${COPY_ICON}
+              </button>
+          </div>
+      `;
+}
+
+function renderGroovyScripts(scripts, prefix) {
+  if (!scripts || scripts.length === 0) return '';
+
+  const content = scripts
+    .map(
+      (action, aIdx) => `
+          <div class="action-box mb-3">
+              <p class="text-sm info-label mb-2">Action: ${action.actionName}</p>
+              ${action.classes
+                .map((item, cIdx) => {
+                  if (item.type === 'groovy') {
+                    return `
+                      <div class="mb-2">
+                          <p class="text-xs text-gray mb-1">Class: ${item.className} ${item.classType ? `(${item.classType})` : ''}</p>
+                          <p class="text-xs text-gray mb-1">Type: Groovy Script</p>
+                          ${item.failMessage ? `<p class="text-xs text-red mb-1"><span class="info-label">Fail Message:</span> ${item.failMessage}</p>` : ''}
+                          ${renderCodeBlock(item.script, `${prefix}-groovy-${aIdx}-${cIdx}`, 'groovy')}
+                      </div>
+                    `;
+                  }
+                  if (item.type === 'sql') {
+                    return `
+                      <div class="mb-2">
+                          <p class="text-xs text-gray mb-1">Class: ${item.className} ${item.classType ? `(${item.classType})` : ''}</p>
+                          <p class="text-xs text-gray mb-1">Type: SQL ${item.function ? `| Function: ${item.function}` : ''}</p>
+                          ${item.failMessage ? `<p class="text-xs text-red mb-1"><span class="info-label">Fail Message:</span> ${item.failMessage}</p>` : ''}
+                          ${renderCodeBlock(item.sql, `${prefix}-sql-${aIdx}-${cIdx}`, 'sql')}
+                      </div>
+                    `;
+                  }
+                  if (item.type === 'paramsList') {
+                    return `
+                      <div class="mb-2">
+                          <p class="text-xs text-gray mb-1">Class: ${item.className} ${item.classType ? `(${item.classType})` : ''}</p>
+                          <p class="text-xs text-gray mb-1">Type: Param List</p>
+                          ${
+                            item.params && item.params.length > 0
+                              ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
+                                      <p class="text-sm info-label">Parametri:</p>
+                                      <table class="table">
+                                          <thead>
+                                              <tr>
+                                                  <th>Name</th>
+                                                  <th>Alias</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                              ${item.params.map((p) => `<tr><td>${escapeHtml(p.name || '')}</td><td>${escapeHtml(p.alias || '')}</td></tr>`).join('')}
+                                          </tbody>
+                                      </table>
+                                   </div>`
+                              : ''
+                          }
+                      </div>
+                    `;
+                  }
+                  return '';
+                })
+                .join('')}
+          </div>
+      `,
+    )
+    .join('');
+
+  // Calcola il numero totale di blocchi di codice
+  const totalBlocks = scripts.reduce((acc, curr) => acc + (curr.classes ? curr.classes.length : 0), 0);
+
+  if (totalBlocks > 1) {
+    return `
+      <div class="scripts-group">
+        <button class="copy-all-btn" onclick="copyAllScripts(this)">Copia tutte le azioni</button>
+        ${content}
+      </div>`;
+  }
+
+  return content;
+}

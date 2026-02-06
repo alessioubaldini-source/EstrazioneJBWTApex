@@ -1,8 +1,60 @@
+// Helper per modale di conferma personalizzata
+function showCustomConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay open';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.maxWidth = '400px';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+    modal.style.gap = '20px';
+
+    const title = document.createElement('h3');
+    title.className = 'modal-title';
+    title.textContent = 'Conferma';
+
+    const text = document.createElement('p');
+    text.textContent = message;
+    text.style.color = '#374151';
+
+    const actions = document.createElement('div');
+    actions.className = 'form-actions';
+    actions.style.marginTop = '0';
+
+    const btnNo = document.createElement('button');
+    btnNo.className = 'btn-secondary';
+    btnNo.textContent = 'NO';
+    btnNo.onclick = () => {
+      document.body.removeChild(overlay);
+      resolve(false);
+    };
+
+    const btnYes = document.createElement('button');
+    btnYes.className = 'btn-primary';
+    btnYes.textContent = 'SÌ';
+    btnYes.onclick = () => {
+      document.body.removeChild(overlay);
+      resolve(true);
+    };
+
+    actions.appendChild(btnNo);
+    actions.appendChild(btnYes);
+
+    modal.appendChild(title);
+    modal.appendChild(text);
+    modal.appendChild(actions);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  });
+}
+
 // Funzione Export Word
 async function downloadWord() {
   if (!currentData || !window.docx) return;
 
-  const convertGroovy = confirm('Vuoi convertire gli script Groovy in PL/SQL?');
+  const convertGroovy = await showCustomConfirm('Vuoi convertire gli script Groovy in PL/SQL?');
 
   const docTitle = currentFilename.replace(/\.xml$/i, '');
 

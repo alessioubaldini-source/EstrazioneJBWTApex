@@ -53,6 +53,7 @@
           <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cerca grid per nome..." disabled />
           <button id="downloadBtn" class="download-btn" onclick="downloadExcel()" disabled>📊 Scarica Excel</button>
           <button id="downloadWordBtn" class="download-word-btn" onclick="downloadWord()" disabled>📝 Scarica Word</button>
+          <button id="downloadApexBtn" class="download-word-btn" style="background-color: #f97316" onclick="downloadApexSharedComponents()" disabled>🚀 (BETA) Genera SharedComponents (LOV+Combo)</button>
           <button id="downloadTestBtn" class="download-word-btn" style="background-color: #7c3aed" onclick="downloadTestCases()" disabled>🧪 Scarica Test Case</button>
         </div>
 
@@ -88,6 +89,11 @@
             <p class="text-xs text-gray mb-2">Formato: <code>{"00007": "Testo del messaggio", ...}</code>. Decodifica <code>@DB@00007@DB@</code>.</p>
             <textarea id="settingsMessages" placeholder='{"00007": "Messaggio di esempio"}'></textarea>
           </div>
+          <div class="form-group">
+            <label for="settingsApex">Impostazioni APEX (JSON Object)</label>
+            <p class="text-xs text-gray mb-2">Formato: <code>{"appId": "100", "workspaceId": "123456", "schema": "MY_SCHEMA", "apiVersion": "2024.05.31", "release": "24.1.3"}</code></p>
+            <textarea id="settingsApex" placeholder='{"appId": "100", "workspaceId": "1400409653939251", "schema": "CMS"}'></textarea>
+          </div>
         </div>
         <div class="form-actions">
           <button class="btn-secondary" onclick="closeSettings()">Annulla</button>
@@ -96,8 +102,14 @@
       </div>
     </div>
 
-    <script src="script.js"></script>
-    <script src="excel_export.js"></script>
-    <script src="word_export.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/parser.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/excel_export.js"></script>
+    <script src="js/word_export.js"></script>
+    <script src="js/apex_export.js"></script>
+    <script src="js/script.js"></script>
   </body>
 </html>
