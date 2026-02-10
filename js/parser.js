@@ -197,9 +197,9 @@ function parseXML(xmlText) {
         label: decodeJBWTMessage(field.getAttribute('label')),
         hint: decodeJBWTMessage(field.getAttribute('hint')),
         length: field.getAttribute('length'),
-        isMandatory: field.getAttribute('isMandatory'),
-        isEditable: field.getAttribute('isEditable'),
-        isHidden: field.getAttribute('isHidden'),
+        isMandatory: field.getAttribute('ismandatory'),
+        isEditable: field.getAttribute('iseditable'),
+        isHidden: field.getAttribute('ishidden'),
         order: field.getAttribute('order'),
         horder: field.getAttribute('horder'),
         validRegex: validRegex,
@@ -403,7 +403,16 @@ function extractActions(rootNode, filterFn = null) {
     const actionName = action.getAttribute('name');
     if (!actionName) return;
 
-    const actionData = { classes: [] };
+    const actionData = { classes: [], openPopup: null };
+
+    // Estrazione openPopup
+    const openPopupNode = action.querySelector('openPopup');
+    if (openPopupNode) {
+      actionData.openPopup = {
+        name: openPopupNode.getAttribute('name'),
+      };
+    }
+
     const groovyClasses = action.querySelectorAll('classes > class');
 
     groovyClasses.forEach((groovyClass) => {
@@ -450,7 +459,7 @@ function extractActions(rootNode, filterFn = null) {
       }
     });
 
-    if (actionData.classes.length > 0) {
+    if (actionData.classes.length > 0 || actionData.openPopup) {
       actionsMap[actionName] = actionData;
     }
   });

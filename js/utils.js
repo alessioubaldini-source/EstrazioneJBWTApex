@@ -135,6 +135,7 @@ function concatenateGroovyScripts(actionRefs, actionsMap) {
       concatenated.push({
         actionName: actionRef,
         classes: actionsMap[actionRef].classes || [],
+        openPopup: actionsMap[actionRef].openPopup || null,
       });
     }
   });

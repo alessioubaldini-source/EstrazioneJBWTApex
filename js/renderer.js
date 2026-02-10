@@ -1,11 +1,12 @@
 function renderData(data) {
   loadProgress();
   currentData = data; // Salva i dati globalmente
-  document.getElementById('searchInput').disabled = false;
   document.getElementById('downloadBtn').disabled = false;
   document.getElementById('downloadWordBtn').disabled = false;
   document.getElementById('downloadTestBtn').disabled = false;
   document.getElementById('downloadApexBtn').disabled = false;
+  document.getElementById('wizardModeBtn').disabled = false;
+  updateProgressBar();
 
   const content = document.getElementById('content');
   const sidebar = document.getElementById('sidebar');
@@ -171,7 +172,7 @@ function renderData(data) {
     // Aggiungi voce alla sidebar
     sidebarHtml += `<li data-grid-name="${grid.name}" class="${isGridDone ? 'grid-done' : ''}">
         <div style="display: flex; align-items: flex-start; gap: 8px;">
-            <a href="#grid-${grid.name}" style="flex: 1;">
+            <a href="javascript:void(0)" onclick="selectGrid('${grid.name}')" style="flex: 1;">
                 <div>📄 ${grid.name} ${grid.label ? `<span class="text-xs text-gray">(${grid.label})</span>` : ''}</div>
                 ${locationInfo}
                 ${summaryBadgesHtml}
@@ -184,9 +185,8 @@ function renderData(data) {
                   <div class="grid-header">
                       <div style="display:flex; align-items:center; gap:10px;">
                         <input type="checkbox" ${isGridDone ? 'checked' : ''} onclick="toggleGridDone(event, '${grid.name}')" title="Segna la grid come completata" style="width:18px; height:18px; cursor:pointer;">
-                        <h2>Grid: ${grid.name}</h2>
+                        <h2>Grid: ${grid.name} ${grid.label ? `<span class="text-sm text-gray" style="font-weight:normal">(${grid.label})</span>` : ''}</h2>
                       </div>
-                      ${grid.label ? `<p class="text-sm text-gray"><span class="info-label">Label:</span> ${grid.label}</p>` : ''}
                       <div class="badge-container">
                           ${grid.tab ? `<span class="badge badge-purple"><span class="info-label">Tab:</span> ${grid.tab.label} (${grid.tab.name})</span>` : ''}
                           ${grid.type ? `<span class="badge badge-blue"><span class="info-label">Type:</span> ${grid.type}</span>` : ''}
@@ -380,8 +380,7 @@ function renderData(data) {
                             (btn, btnIdx) => `
                           <div class="mb-3" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
                               <p class="text-sm mb-1"><span class="badge badge-blue text-xs">${btn.type}</span></p>
-                              <p class="text-sm mb-1"><span class="info-label">Name:</span> ${btn.name}</p>
-                              <p class="text-sm mb-1"><span class="info-label">Label:</span> ${btn.label}</p>
+                              <p class="text-sm mb-1"><span class="info-label">Name:</span> ${btn.name} ${btn.label ? `(${btn.label})` : ''}</p>
                               <p class="text-sm mb-1"><span class="info-label">Order:</span> ${btn.order}</p>
                               ${btn.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${btn.callFormName}</p>` : ''}
                               ${
@@ -431,8 +430,7 @@ function renderData(data) {
                             (btn, btnIdx) => `
                           <div class="mb-3" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
                               <p class="text-sm mb-1"><span class="badge badge-blue text-xs">${btn.type}</span></p>
-                              <p class="text-sm mb-1"><span class="info-label">Name:</span> ${btn.name}</p>
-                              <p class="text-sm mb-1"><span class="info-label">Label:</span> ${btn.label}</p>
+                              <p class="text-sm mb-1"><span class="info-label">Name:</span> ${btn.name} ${btn.label ? `(${btn.label})` : ''}</p>
                               <p class="text-sm mb-1"><span class="info-label">Order:</span> ${btn.order}</p>
                               ${btn.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${btn.callFormName}</p>` : ''}
                               ${
@@ -551,6 +549,14 @@ function renderGroovyScripts(scripts, prefix) {
       (action, aIdx) => `
           <div class="action-box mb-3">
               <p class="text-sm info-label mb-2">Action: ${action.actionName}</p>
+              ${
+                action.openPopup && action.openPopup.name
+                  ? `<div class="mb-2">
+                          <p class="text-xs text-gray mb-1">Type: Open Popup</p>
+                          <p class="text-sm mb-1"><span class="info-label">Popup Name:</span> ${action.openPopup.name}</p>
+                      </div>`
+                  : ''
+              }
               ${action.classes
                 .map((item, cIdx) => {
                   if (item.type === 'groovy') {

@@ -1,6 +1,10 @@
 let currentData = null; // Variabile globale per memorizzare i dati per l'export
 let currentFilename = 'Estrazione_JBWT.xml';
 let rawXMLText = null;
+let isWizardMode = false;
+let selectedGridForWizard = null;
+let wizardProgress = {}; // Traccia i substep visitati: { gridName: Set('sub_1_1', ...) }
+let isWizardProgressEnabled = false;
 
 async function loadDefaultXML() {
   loadSettings(); // Carica impostazioni all'avvio
@@ -15,7 +19,7 @@ async function loadDefaultXML() {
         currentFilename = 'AUTG0006.xml';
         rawXMLText = response;
         const data = parseXML(response);
-        renderData(data);
+        renderData(data); // This will render the normal view
       } catch (e) {
         console.log('File di default non trovato, attesa upload utente');
       }
@@ -29,6 +33,10 @@ async function loadDefaultXML() {
 document.getElementById('fileInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
+
+  if (isWizardMode) {
+    toggleWizardMode();
+  }
 
   currentFilename = file.name;
   const errorEl = document.getElementById('error');

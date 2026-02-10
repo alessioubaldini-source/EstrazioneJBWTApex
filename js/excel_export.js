@@ -55,6 +55,9 @@ function downloadExcel() {
         wnfiRows.push(['SCRIPTS']);
         wnfiRows.push(['Action', 'Type', 'Class', 'Fail Msg', 'Code']);
         currentData.whenNewFormInstanceGroovy.forEach((action) => {
+          if (action.openPopup && action.openPopup.name) {
+            wnfiRows.push([action.actionName, 'Open Popup', '', '', `Name: ${action.openPopup.name}`]);
+          }
           action.classes.forEach((item) => {
             if (item.type === 'groovy') {
               wnfiRows.push([action.actionName, 'Groovy', item.className, item.failMessage || '', item.script]);
@@ -172,19 +175,21 @@ function downloadExcel() {
       rows.push(['Event Name', 'Waiting Window', 'Action Refs', 'Scripts']);
       grid.events.forEach((evt) => {
         const scripts = evt.groovyScripts
-          .map((action) =>
-            action.classes
-              .map((item) => {
-                if (item.type === 'groovy') return `[Groovy] ${item.script}`;
-                if (item.type === 'sql') return `[SQL] ${item.sql}`;
-                if (item.type === 'paramsList') {
-                  const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('; ');
-                  return `[Params] ${paramsText}`;
-                }
-                return '';
-              })
-              .join('\n'),
-          )
+          .map((action) => {
+            const parts = [];
+            if (action.openPopup && action.openPopup.name) {
+              parts.push(`[Open Popup] Name: ${action.openPopup.name}`);
+            }
+            action.classes.forEach((item) => {
+              if (item.type === 'groovy') parts.push(`[Groovy] ${item.script}`);
+              if (item.type === 'sql') parts.push(`[SQL] ${item.sql}`);
+              if (item.type === 'paramsList') {
+                const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('; ');
+                parts.push(`[Params] ${paramsText}`);
+              }
+            });
+            return parts.join('\n');
+          })
           .join('\n---\n');
         const nameWithContext = evt.name + (evt.context ? ` (${evt.context})` : '');
         rows.push([nameWithContext, evt.waitingWindow, evt.actionRefs.join(', '), scripts]);
@@ -198,19 +203,21 @@ function downloadExcel() {
       rows.push(['Type', 'Name', 'Label', 'CallForm', 'Params', 'Action Refs', 'Scripts']);
       grid.topToolbarButtons.forEach((btn) => {
         const scripts = btn.groovyScripts
-          .map((action) =>
-            action.classes
-              .map((item) => {
-                if (item.type === 'groovy') return `[Groovy] ${item.script}`;
-                if (item.type === 'sql') return `[SQL] ${item.sql}`;
-                if (item.type === 'paramsList') {
-                  const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('; ');
-                  return `[Params] ${paramsText}`;
-                }
-                return '';
-              })
-              .join('\n'),
-          )
+          .map((action) => {
+            const parts = [];
+            if (action.openPopup && action.openPopup.name) {
+              parts.push(`[Open Popup] Name: ${action.openPopup.name}`);
+            }
+            action.classes.forEach((item) => {
+              if (item.type === 'groovy') parts.push(`[Groovy] ${item.script}`);
+              if (item.type === 'sql') parts.push(`[SQL] ${item.sql}`);
+              if (item.type === 'paramsList') {
+                const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('; ');
+                parts.push(`[Params] ${paramsText}`);
+              }
+            });
+            return parts.join('\n');
+          })
           .join('\n---\n');
         const params = (btn.params || []).map((p) => `${p.name || ''}${p.alias ? ` (${p.alias})` : ''}`).join('\n');
         rows.push([btn.type, btn.name, btn.label, btn.callFormName, params, btn.actionRef.join(', '), scripts]);
@@ -224,19 +231,21 @@ function downloadExcel() {
       rows.push(['Type', 'Name', 'Label', 'CallForm', 'Params', 'Action Refs', 'Scripts']);
       grid.bottomToolbarButtons.forEach((btn) => {
         const scripts = btn.groovyScripts
-          .map((action) =>
-            action.classes
-              .map((item) => {
-                if (item.type === 'groovy') return `[Groovy] ${item.script}`;
-                if (item.type === 'sql') return `[SQL] ${item.sql}`;
-                if (item.type === 'paramsList') {
-                  const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('; ');
-                  return `[Params] ${paramsText}`;
-                }
-                return '';
-              })
-              .join('\n'),
-          )
+          .map((action) => {
+            const parts = [];
+            if (action.openPopup && action.openPopup.name) {
+              parts.push(`[Open Popup] Name: ${action.openPopup.name}`);
+            }
+            action.classes.forEach((item) => {
+              if (item.type === 'groovy') parts.push(`[Groovy] ${item.script}`);
+              if (item.type === 'sql') parts.push(`[SQL] ${item.sql}`);
+              if (item.type === 'paramsList') {
+                const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('; ');
+                parts.push(`[Params] ${paramsText}`);
+              }
+            });
+            return parts.join('\n');
+          })
           .join('\n---\n');
         const params = (btn.params || []).map((p) => `${p.name || ''}${p.alias ? ` (${p.alias})` : ''}`).join('\n');
         rows.push([btn.type, btn.name, btn.label, btn.callFormName, params, btn.actionRef.join(', '), scripts]);
@@ -434,6 +443,36 @@ function downloadTestCases() {
   }
 
   XLSX.utils.book_append_sheet(wb, ws, 'Test Plan');
+
+  // Aggiunta foglio "Consigli su risoluzione di problemi"
+  const adviceRows = [];
+  adviceRows.push(['CONSIGLI SU RISOLUZIONE DI PROBLEMI']);
+  adviceRows.push([]);
+  adviceRows.push(['Problema', 'Soluzione/Consiglio']);
+  adviceRows.push(['Session State Protection', 'Verificare che i Page Item hidden non abbiano "Value Protected" su Yes ']);
+  adviceRows.push(['Grid non salva', 'Controllare che la colonna Primary Key sia impostata come "Primary Key" nella Grid.']);
+  adviceRows.push(['Non mostra dati (lov, combo, grid vuota)', 'Verificare query e assicurarsi di aver inserito i Page Item in "Page Items to Submit".']);
+
+  const wsAdvice = XLSX.utils.aoa_to_sheet(adviceRows);
+  wsAdvice['!cols'] = [
+    { wch: 40 }, // Problema
+    { wch: 70 }, // Soluzione
+  ];
+
+  // Applica grassetto all'header
+  const rangeAdvice = XLSX.utils.decode_range(wsAdvice['!ref']);
+  for (let R = rangeAdvice.s.r; R <= Math.min(rangeAdvice.e.r, 2); ++R) {
+    for (let C = rangeAdvice.s.c; C <= rangeAdvice.e.c; ++C) {
+      const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+      if (wsAdvice[cellRef]) {
+        if (!wsAdvice[cellRef].s) wsAdvice[cellRef].s = {};
+        wsAdvice[cellRef].s.font = { bold: true };
+      }
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, wsAdvice, 'Consigli');
+
   const docTitle = currentFilename.replace(/\.xml$/i, '');
   XLSX.writeFile(wb, `${docTitle}_TestCases.xlsx`);
 }

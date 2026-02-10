@@ -1,55 +1,3 @@
-// Helper per modale di conferma personalizzata
-function showCustomConfirm(message) {
-  return new Promise((resolve) => {
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay open';
-
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.maxWidth = '400px';
-    modal.style.display = 'flex';
-    modal.style.flexDirection = 'column';
-    modal.style.gap = '20px';
-
-    const title = document.createElement('h3');
-    title.className = 'modal-title';
-    title.textContent = 'Conferma';
-
-    const text = document.createElement('p');
-    text.textContent = message;
-    text.style.color = '#374151';
-
-    const actions = document.createElement('div');
-    actions.className = 'form-actions';
-    actions.style.marginTop = '0';
-
-    const btnNo = document.createElement('button');
-    btnNo.className = 'btn-secondary';
-    btnNo.textContent = 'NO';
-    btnNo.onclick = () => {
-      document.body.removeChild(overlay);
-      resolve(false);
-    };
-
-    const btnYes = document.createElement('button');
-    btnYes.className = 'btn-primary';
-    btnYes.textContent = 'SÌ';
-    btnYes.onclick = () => {
-      document.body.removeChild(overlay);
-      resolve(true);
-    };
-
-    actions.appendChild(btnNo);
-    actions.appendChild(btnYes);
-
-    modal.appendChild(title);
-    modal.appendChild(text);
-    modal.appendChild(actions);
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-  });
-}
-
 // Funzione Export Word
 async function downloadWord() {
   if (!currentData || !window.docx) return;
@@ -233,6 +181,14 @@ async function downloadWord() {
     if (currentData.whenNewFormInstanceGroovy.length > 0) {
       currentData.whenNewFormInstanceGroovy.forEach((action) => {
         docChildren.push(new Paragraph({ text: `Action: ${action.actionName}`, heading: HeadingLevel.HEADING_3 }));
+        if (action.openPopup && action.openPopup.name) {
+          docChildren.push(
+            new Paragraph({
+              children: [new TextRun({ text: 'Type: Open Popup | Name: ', size: 22 }), new TextRun({ text: action.openPopup.name, bold: true, size: 22 })],
+              spacing: { before: 60, after: 60 },
+            }),
+          );
+        }
         action.classes.forEach((cls) => {
           if (cls.type === 'paramsList') {
             docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, bold: true, size: 22, color: '374151' })], spacing: { before: 60 } }));
@@ -464,6 +420,14 @@ async function downloadWord() {
                   spacing: { before: 100 },
                 }),
               );
+              if (action.openPopup && action.openPopup.name) {
+                docChildren.push(
+                  new Paragraph({
+                    children: [new TextRun({ text: 'Type: Open Popup | Name: ', size: 20 }), new TextRun({ text: action.openPopup.name, bold: true, size: 20 })],
+                    spacing: { before: 60, after: 60 },
+                  }),
+                );
+              }
               action.classes.forEach((cls) => {
                 if (cls.type === 'paramsList') {
                   docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
@@ -505,6 +469,14 @@ async function downloadWord() {
                   spacing: { before: 100 },
                 }),
               );
+              if (action.openPopup && action.openPopup.name) {
+                docChildren.push(
+                  new Paragraph({
+                    children: [new TextRun({ text: 'Type: Open Popup | Name: ', size: 20 }), new TextRun({ text: action.openPopup.name, bold: true, size: 20 })],
+                    spacing: { before: 60, after: 60 },
+                  }),
+                );
+              }
               action.classes.forEach((cls) => {
                 if (cls.type === 'paramsList') {
                   docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
@@ -546,6 +518,14 @@ async function downloadWord() {
                   spacing: { before: 100 },
                 }),
               );
+              if (action.openPopup && action.openPopup.name) {
+                docChildren.push(
+                  new Paragraph({
+                    children: [new TextRun({ text: 'Type: Open Popup | Name: ', size: 20 }), new TextRun({ text: action.openPopup.name, bold: true, size: 20 })],
+                    spacing: { before: 60, after: 60 },
+                  }),
+                );
+              }
               action.classes.forEach((cls) => {
                 if (cls.type === 'paramsList') {
                   docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
