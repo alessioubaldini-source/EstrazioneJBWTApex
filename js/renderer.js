@@ -1,5 +1,17 @@
 function renderData(data) {
   loadProgress();
+
+  // Ordina le grid per la proprietà "order"
+  if (data.grids) {
+    data.grids.sort((a, b) => {
+      const orderA_raw = parseInt(a.order, 10);
+      const orderA = !isNaN(orderA_raw) ? orderA_raw : 9999;
+      const orderB_raw = parseInt(b.order, 10);
+      const orderB = !isNaN(orderB_raw) ? orderB_raw : 9999;
+      return orderA - orderB;
+    });
+  }
+
   currentData = data; // Salva i dati globalmente
   document.getElementById('downloadBtn').disabled = false;
   document.getElementById('downloadWordBtn').disabled = false;
@@ -63,52 +75,6 @@ function renderData(data) {
     );
   }
 
-  if (data.popups && data.popups.length > 0) {
-    html += renderSection(
-      'Popups',
-      'popups-section',
-      data.popups.length,
-      `
-              <div class="grid-card">
-                  ${data.popups
-                    .map(
-                      (popup) => `
-                      <div class="popup-card">
-                          <h3 class="info-label text-lg mb-2" style="font-size: 1.125rem; color: #c2410c;">${popup.name}</h3>
-                          <p class="text-sm mb-1"><span class="info-label">Title:</span> ${popup.title || 'N/A'}</p>
-                          ${popup.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${popup.callFormName}</p>` : ''}
-                          ${
-                            popup.params && popup.params.length > 0
-                              ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
-                                  <p class="text-sm info-label">Parametri:</p>
-                                  <table class="table">
-                                      <thead>
-                                          <tr>
-                                              <th>Name</th>
-                                              <th>Alias</th>
-                                          </tr>
-                                      </thead>
-                                      <tbody>
-                                          ${popup.params.map((p) => `<tr><td>${escapeHtml(p.name || '')}</td><td>${escapeHtml(p.alias || '')}</td></tr>`).join('')}
-                                      </tbody>
-                                  </table>
-                               </div>`
-                              : ''
-                          }
-                          <p class="text-sm mb-1"><span class="info-label">Dimensioni:</span> ${popup.width} x ${popup.height}</p>
-                          <p class="text-sm mb-1">
-                              <span class="info-label">Grids:</span> 
-                              ${popup.grids.length > 0 ? popup.grids.map((g) => `<span class="badge badge-orange text-xs">${g}</span>`).join(' ') : 'Nessuno'}
-                          </p>
-                      </div>
-                  `,
-                    )
-                    .join('')}
-              </div>
-          `,
-    );
-  }
-
   if (data.whenNewFormInstance.length > 0) {
     html += renderSection(
       'When New Form Instance',
@@ -121,12 +87,49 @@ function renderData(data) {
     );
   }
 
-  // Inizializza HTML Sidebar
+  if (data.globalActions && data.globalActions.length > 0) {
+    const usedActions = new Set();
+    if (data.whenNewFormInstance) {
+      data.whenNewFormInstance.forEach((a) => usedActions.add(a));
+    }
+    if (data.grids) {
+      data.grids.forEach((grid) => {
+        if (grid.events) {
+          grid.events.forEach((evt) => {
+            if (evt.actionRefs) evt.actionRefs.forEach((a) => usedActions.add(a));
+          });
+        }
+        if (grid.topToolbarButtons) {
+          grid.topToolbarButtons.forEach((btn) => {
+            if (btn.actionRef) btn.actionRef.forEach((a) => usedActions.add(a));
+          });
+        }
+        if (grid.bottomToolbarButtons) {
+          grid.bottomToolbarButtons.forEach((btn) => {
+            if (btn.actionRef) btn.actionRef.forEach((a) => usedActions.add(a));
+          });
+        }
+      });
+    }
+
+    const filteredGlobalActions = data.globalActions.filter((action) => !usedActions.has(action.actionName));
+
+    if (filteredGlobalActions.length > 0) {
+      html += renderSection('Azioni Globali (Definizioni)', 'form-global-actions', filteredGlobalActions.length, renderGroovyScripts(filteredGlobalActions, 'global'));
+    }
+  }
+
+  // --- SIDEBAR ---
   let sidebarHtml = `
       <h3>📌 Indice Grids</h3>
       <ul>`;
 
-  data.grids.forEach((grid, idx) => {
+  const sbPopupGridNames = data.popups ? data.popups.flatMap((p) => p.grids) : [];
+  const sbStandaloneGrids = data.grids.filter((g) => !sbPopupGridNames.includes(g.name));
+  const sbPopupGrids = data.grids.filter((g) => sbPopupGridNames.includes(g.name));
+  const sbAllGrids = [...sbStandaloneGrids, ...sbPopupGrids];
+
+  sbAllGrids.forEach((grid) => {
     const hasTemplates = Object.keys(grid.templates).length > 0;
 
     // Raggruppamento Eventi
@@ -179,8 +182,17 @@ function renderData(data) {
             </a>
         </div>
     </li>`;
+  });
 
-    html += `
+  // --- GRIDS HELPER ---
+  const renderGridHtml = (grid, idx) => {
+    const hasTemplates = Object.keys(grid.templates).length > 0;
+    const evAbilitazioni = grid.events.filter((e) => ['whennewforminstance', 'whennewrecordinstance', 'whenrecordfetched'].includes(e.name.toLowerCase()));
+    const evControlli = grid.events.filter((e) => ['whenexitchangedrecord', 'whenfinisheditvalue'].includes(e.name.toLowerCase()));
+    const evAltri = grid.events.filter((e) => !evAbilitazioni.includes(e) && !evControlli.includes(e));
+    const isGridDone = progressData[`grid-done-${grid.name}`] === true;
+
+    return `
               <div class="grid-card ${isGridDone ? 'grid-done collapsed' : ''}" id="grid-${grid.name}" data-grid-name="${grid.name.toLowerCase()}">
                   <div class="grid-header">
                       <div style="display:flex; align-items:center; gap:10px;">
@@ -472,7 +484,66 @@ function renderData(data) {
                   </div>
               </div>
           `;
-  });
+  };
+
+  // --- RENDER STANDALONE GRIDS ---
+  const popupGridNames = data.popups ? data.popups.flatMap((p) => p.grids) : [];
+  const standaloneGrids = data.grids.filter((g) => !popupGridNames.includes(g.name));
+
+  if (standaloneGrids.length > 0) {
+    html += `<h2 style="margin-top: 20px; margin-bottom: 10px; font-size: 1.5rem; color: #111827;">Grids</h2>`;
+    standaloneGrids.forEach((grid) => {
+      const idx = data.grids.indexOf(grid);
+      html += renderGridHtml(grid, idx);
+    });
+  }
+
+  // --- RENDER POPUPS ---
+  if (data.popups && data.popups.length > 0) {
+    html += `<h2 style="margin-top: 40px; margin-bottom: 10px; font-size: 1.5rem; color: #111827;">Popups</h2>`;
+
+    data.popups.forEach((popup) => {
+      html += `
+        <div class="section">
+          <div class="section-header" style="background-color: #fff7ed; border-left: 4px solid #c2410c;">
+             <span style="font-size: 1.1em; font-weight: bold; color: #9a3412;">Popup: ${popup.name}</span>
+          </div>
+          <div class="section-content open" style="padding: 15px;">
+             <div class="popup-info mb-4">
+                <p class="text-sm mb-1"><span class="info-label">Title:</span> ${popup.title || 'N/A'}</p>
+                <p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${popup.callFormName || 'N/A'}</p>
+                <p class="text-sm mb-1"><span class="info-label">Dimensioni:</span> ${popup.width} x ${popup.height}</p>
+                ${
+                  popup.params && popup.params.length > 0
+                    ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
+                        <p class="text-sm info-label">Parametri:</p>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Alias</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${popup.params.map((p) => `<tr><td>${escapeHtml(p.name || '')}</td><td>${escapeHtml(p.alias || '')}</td></tr>`).join('')}
+                            </tbody>
+                        </table>
+                     </div>`
+                    : ''
+                }
+             </div>
+             
+             <div class="popup-grids">
+                ${data.grids
+                  .filter((g) => popup.grids.includes(g.name))
+                  .map((grid) => renderGridHtml(grid, data.grids.indexOf(grid)))
+                  .join('')}
+             </div>
+          </div>
+        </div>
+      `;
+    });
+  }
 
   content.innerHTML = html;
 

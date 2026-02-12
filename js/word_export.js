@@ -87,6 +87,359 @@ async function downloadWord() {
     return createCodeBlock(codeText, codeType);
   };
 
+  const renderGridContent = (grid, addPageBreak = true) => {
+    const gridChildren = [];
+
+    // Page Break prima di ogni Grid
+    if (addPageBreak) {
+      gridChildren.push(new Paragraph({ children: [new PageBreak()] }));
+    }
+
+    // Grid Header
+    gridChildren.push(new Paragraph({ text: `Grid: ${grid.name}`, heading: HeadingLevel.HEADING_2 }));
+
+    // Helper per permessi colorati
+    const createPermRun = (label, val) => {
+      const isTrue = String(val) === 'true';
+      return [new TextRun({ text: `${label}: `, size: 22, color: '111827' }), new TextRun({ text: String(val), bold: true, size: 22, color: isTrue ? '166534' : '991B1B' }), new TextRun({ text: '  ', size: 22 })];
+    };
+
+    const permCell = new TableCell({
+      children: [
+        new Paragraph({
+          children: [...createPermRun('I', grid.insertAllowed), ...createPermRun('U', grid.updateAllowed), ...createPermRun('D', grid.deleteAllowed)],
+          spacing: { before: 60, after: 60 },
+        }),
+      ],
+      width: { size: 80, type: WidthType.PERCENTAGE },
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+        left: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+        right: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+      },
+      margins: { top: 80, bottom: 80, left: 80, right: 80 },
+    });
+
+    // Grid Info Table
+    const infoRows = [
+      new TableRow({ children: [createLabelCell('Label', 20), createValueCell(grid.label || '', 30), createLabelCell('Type', 20), createValueCell(grid.type || '', 30)] }),
+      new TableRow({ children: [createLabelCell('Tab', 20), createValueCell(grid.tab ? grid.tab.label : '', 30), createLabelCell('Ref', 20), createValueCell(grid.ref || '', 30)] }),
+      new TableRow({ children: [createLabelCell('Permissions', 20), permCell] }),
+    ];
+    gridChildren.push(new Table({ rows: infoRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+    gridChildren.push(new Paragraph({ text: '', spacing: { after: 240 } }));
+
+    // Templates
+    const tplKeys = Object.keys(grid.templates);
+    if (tplKeys.length > 0) {
+      gridChildren.push(new Paragraph({ text: 'Templates', heading: HeadingLevel.HEADING_3 }));
+      tplKeys.forEach((key) => {
+        gridChildren.push(new Paragraph({ text: key, bold: true, spacing: { before: 200 } }));
+        gridChildren.push(createCodeBlock(grid.templates[key], 'sql'));
+      });
+    }
+
+    // RPC Expand
+    if (grid.rpcExpand) {
+      gridChildren.push(new Paragraph({ text: 'RPC Expand', heading: HeadingLevel.HEADING_3 }));
+      gridChildren.push(createCodeBlock(grid.rpcExpand, 'sql'));
+      if (grid.rpcExpandInitOrderBy) {
+        gridChildren.push(new Paragraph({ text: `Init Order By: ${grid.rpcExpandInitOrderBy}`, spacing: { before: 100 } }));
+      }
+    }
+
+    if (grid.rpcExpandInit) {
+      gridChildren.push(new Paragraph({ text: 'RPC Expand Init', heading: HeadingLevel.HEADING_3 }));
+      gridChildren.push(createCodeBlock(grid.rpcExpandInit, 'sql'));
+    }
+
+    // Fields
+    if (grid.fields && grid.fields.length > 0) {
+      gridChildren.push(new Paragraph({ text: 'Fields', heading: HeadingLevel.HEADING_3 }));
+
+      const fieldHeader = new TableRow({
+        children: [
+          createHeaderCell('Type', 10),
+          createHeaderCell('Name', 15),
+          createHeaderCell('Label', 15),
+          createHeaderCell('Hint', 10),
+          createHeaderCell('Len', 5),
+          createHeaderCell('Mand', 5),
+          createHeaderCell('Edit', 5),
+          createHeaderCell('Hide', 5),
+          createHeaderCell('Regex', 30),
+        ],
+      });
+
+      const fieldRows = [fieldHeader];
+
+      // Ordina i campi per order (asc) e poi horder (asc)
+      const sortedFields = [...grid.fields].sort((a, b) => {
+        const orderA = parseInt(a.order, 10) || 0;
+        const orderB = parseInt(b.order, 10) || 0;
+        if (orderA !== orderB) return orderA - orderB;
+
+        const horderA = parseInt(a.horder, 10) || 0;
+        const horderB = parseInt(b.horder, 10) || 0;
+        return horderA - horderB;
+      });
+
+      sortedFields.forEach((f) => {
+        let regexText = '';
+        if (f.validRegex) {
+          regexText = `${f.validRegex.regex}\n${f.validRegex.message || ''}`;
+        }
+
+        fieldRows.push(
+          new TableRow({
+            children: [
+              createValueCell(f.tag || '', 10),
+              createValueCell(f.name || '', 15),
+              createValueCell(f.label || '', 15),
+              createValueCell(f.hint || '', 10),
+              createValueCell(f.length || '', 5),
+              createValueCell(f.isMandatory || '', 5),
+              createValueCell(f.isEditable || '', 5),
+              createValueCell(f.isHidden || '', 5),
+              createValueCell(regexText, 30),
+            ],
+          }),
+        );
+      });
+
+      gridChildren.push(new Table({ rows: fieldRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+      gridChildren.push(new Paragraph({ text: '', spacing: { after: 240 } }));
+    }
+
+    // LOVs
+    if (grid.listOfValues.length > 0) {
+      gridChildren.push(new Paragraph({ text: 'List Of Values', heading: HeadingLevel.HEADING_3 }));
+      grid.listOfValues.forEach((lov) => {
+        gridChildren.push(new Paragraph({ text: `${lov.name} ${lov.label ? `(${lov.label})` : ''}`, bold: true, spacing: { before: 200 } }));
+        if (lov.value) gridChildren.push(createCodeBlock(lov.value, 'sql'));
+        if (lov.initOrderBy) gridChildren.push(new Paragraph({ text: `Order By: ${lov.initOrderBy}` }));
+      });
+    }
+
+    // Comboboxes
+    if (grid.comboboxes.length > 0) {
+      gridChildren.push(new Paragraph({ text: 'Comboboxes', heading: HeadingLevel.HEADING_3 }));
+      grid.comboboxes.forEach((combo) => {
+        gridChildren.push(new Paragraph({ text: `${combo.name} ${combo.label ? `(${combo.label})` : ''}`, bold: true, spacing: { before: 200 } }));
+        if (combo.sqlValue) {
+          gridChildren.push(createCodeBlock(combo.sqlValue, 'sql'));
+        } else if (combo.rows.length > 0) {
+          const comboRows = [new TableRow({ children: [createHeaderCell('ID'), createHeaderCell('Label')] })];
+          combo.rows.forEach((r) => comboRows.push(new TableRow({ children: [createValueCell(r.id), createValueCell(r.label)] })));
+          gridChildren.push(new Table({ rows: comboRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+        }
+      });
+    }
+
+    // CheckAndSaveData
+    if (grid.checkAndSaveData) {
+      const ops = ['insert', 'update', 'delete'];
+      const hasData = ops.some((op) => grid.checkAndSaveData[op].length > 0);
+
+      if (hasData) {
+        gridChildren.push(new Paragraph({ text: 'CheckAndSaveData', heading: HeadingLevel.HEADING_3 }));
+        ops.forEach((op) => {
+          if (grid.checkAndSaveData[op].length > 0) {
+            gridChildren.push(new Paragraph({ text: op.charAt(0).toUpperCase() + op.slice(1), bold: true, spacing: { before: 200 } }));
+            grid.checkAndSaveData[op].forEach((sql) => {
+              gridChildren.push(createCodeBlock(sql, 'sql'));
+            });
+          }
+        });
+      }
+    }
+
+    // Before Commit Validation
+    if (grid.beforeCommitValidation.length > 0) {
+      gridChildren.push(new Paragraph({ text: 'Before Commit Validation', heading: HeadingLevel.HEADING_3 }));
+      grid.beforeCommitValidation.forEach((bc) => {
+        gridChildren.push(new Paragraph({ text: bc.name, bold: true, spacing: { before: 200 } }));
+        if (bc.function) gridChildren.push(new Paragraph({ text: `Function: ${bc.function}` }));
+        if (bc.failMessage) gridChildren.push(new Paragraph({ text: `Fail Message: ${bc.failMessage}`, color: '991B1B' }));
+        gridChildren.push(createCodeBlock(bc.sql, 'sql'));
+      });
+    }
+
+    // Events
+    if (grid.events.length > 0) {
+      gridChildren.push(new Paragraph({ text: 'Events', heading: HeadingLevel.HEADING_3 }));
+      const sortedEvents = [...grid.events].sort((a, b) => {
+        const getPriority = (name) => {
+          const n = name.toLowerCase();
+          if (n.includes('whenexitchangedrecord')) return 1;
+          if (n.includes('whenfinishedit')) return 2;
+          if (n.includes('whenchangevalue')) return 3;
+          return 4;
+        };
+        return getPriority(a.name) - getPriority(b.name);
+      });
+
+      sortedEvents.forEach((evt) => {
+        const evtTitle = `${evt.name}${evt.context ? ` (Field: ${evt.context})` : ''}`;
+        gridChildren.push(
+          new Paragraph({
+            children: [new TextRun({ text: evtTitle }), new TextRun({ text: evt.waitingWindow ? ' [Waiting Window]' : '', color: 'D97706', size: 20 })],
+            heading: HeadingLevel.HEADING_4,
+          }),
+        );
+
+        if (evt.actionRefs.length > 0) {
+          gridChildren.push(new Paragraph({ text: `Action Refs: ${evt.actionRefs.join(', ')}`, size: 20 }));
+        }
+
+        if (evt.groovyScripts.length > 0) {
+          evt.groovyScripts.forEach((action) => {
+            gridChildren.push(
+              new Paragraph({
+                children: [new TextRun({ text: `Action: ${action.actionName}`, size: 20, color: '1E40AF', bold: true })],
+                spacing: { before: 100 },
+              }),
+            );
+            if (action.openPopup && action.openPopup.name) {
+              gridChildren.push(
+                new Paragraph({
+                  children: [new TextRun({ text: 'Type: Open Popup | Name: ', size: 20 }), new TextRun({ text: action.openPopup.name, bold: true, size: 20 })],
+                  spacing: { before: 60, after: 60 },
+                }),
+              );
+            }
+            action.classes.forEach((cls) => {
+              if (cls.type === 'paramsList') {
+                gridChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                if (cls.params && cls.params.length > 0) {
+                  const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
+                  cls.params.forEach((p) => {
+                    paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
+                  });
+                  gridChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+                }
+              } else {
+                gridChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                if (cls.failMessage) gridChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
+                gridChildren.push(processCodeBlock(cls));
+              }
+            });
+          });
+        }
+      });
+    }
+
+    // Top Toolbar Buttons
+    if (grid.topToolbarButtons && grid.topToolbarButtons.length > 0) {
+      gridChildren.push(new Paragraph({ text: 'Top Toolbar Buttons', heading: HeadingLevel.HEADING_3 }));
+      grid.topToolbarButtons.forEach((btn) => {
+        gridChildren.push(new Paragraph({ text: `[${btn.type}] ${btn.name} - ${btn.label} (Order: ${btn.order})`, bold: true, spacing: { before: 200 } }));
+        if (btn.callFormName) gridChildren.push(new Paragraph({ text: `CallForm: ${btn.callFormName}` }));
+
+        if (btn.params && btn.params.length > 0) {
+          const paramText = btn.params.map((p) => `${p.name}=${p.alias}`).join(', ');
+          gridChildren.push(new Paragraph({ text: `Params: ${paramText}`, size: 20 }));
+        }
+
+        if (btn.groovyScripts.length > 0) {
+          btn.groovyScripts.forEach((action) => {
+            gridChildren.push(
+              new Paragraph({
+                children: [new TextRun({ text: `Action: ${action.actionName}`, size: 20, color: '1E40AF', bold: true })],
+                spacing: { before: 100 },
+              }),
+            );
+            if (action.openPopup && action.openPopup.name) {
+              gridChildren.push(
+                new Paragraph({
+                  children: [new TextRun({ text: 'Type: Open Popup | Name: ', size: 20 }), new TextRun({ text: action.openPopup.name, bold: true, size: 20 })],
+                  spacing: { before: 60, after: 60 },
+                }),
+              );
+            }
+            action.classes.forEach((cls) => {
+              if (cls.type === 'paramsList') {
+                gridChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                if (cls.params && cls.params.length > 0) {
+                  const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
+                  cls.params.forEach((p) => {
+                    paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
+                  });
+                  gridChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+                }
+              } else {
+                gridChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                if (cls.failMessage) gridChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
+                gridChildren.push(processCodeBlock(cls));
+              }
+            });
+          });
+        }
+      });
+    }
+
+    // Buttons
+    if (grid.bottomToolbarButtons.length > 0) {
+      gridChildren.push(new Paragraph({ text: 'Buttons', heading: HeadingLevel.HEADING_3 }));
+      grid.bottomToolbarButtons.forEach((btn) => {
+        gridChildren.push(new Paragraph({ text: `[${btn.type}] ${btn.name} - ${btn.label} (Order: ${btn.order})`, bold: true, spacing: { before: 200 } }));
+        if (btn.callFormName) gridChildren.push(new Paragraph({ text: `CallForm: ${btn.callFormName}` }));
+
+        if (btn.params && btn.params.length > 0) {
+          const paramText = btn.params.map((p) => `${p.name}=${p.alias}`).join(', ');
+          gridChildren.push(new Paragraph({ text: `Params: ${paramText}`, size: 20 }));
+        }
+
+        if (btn.groovyScripts.length > 0) {
+          btn.groovyScripts.forEach((action) => {
+            gridChildren.push(
+              new Paragraph({
+                children: [new TextRun({ text: `Action: ${action.actionName}`, size: 20, color: '1E40AF', bold: true })],
+                spacing: { before: 100 },
+              }),
+            );
+            if (action.openPopup && action.openPopup.name) {
+              gridChildren.push(
+                new Paragraph({
+                  children: [new TextRun({ text: 'Type: Open Popup | Name: ', size: 20 }), new TextRun({ text: action.openPopup.name, bold: true, size: 20 })],
+                  spacing: { before: 60, after: 60 },
+                }),
+              );
+            }
+            action.classes.forEach((cls) => {
+              if (cls.type === 'paramsList') {
+                gridChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                if (cls.params && cls.params.length > 0) {
+                  const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
+                  cls.params.forEach((p) => {
+                    paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
+                  });
+                  gridChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+                }
+              } else {
+                gridChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
+                if (cls.failMessage) gridChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
+                gridChildren.push(processCodeBlock(cls));
+              }
+            });
+          });
+        }
+      });
+    }
+
+    // Separatore Grid
+    gridChildren.push(
+      new Paragraph({
+        text: '',
+        border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'E5E7EB' } },
+        spacing: { after: 480 },
+      }),
+    );
+
+    return gridChildren;
+  };
+
   const docChildren = [];
 
   // --- TITOLO ---
@@ -149,25 +502,6 @@ async function downloadWord() {
     docChildren.push(new Paragraph({ text: '', spacing: { after: 400 } }));
   }
 
-  // --- POPUPS ---
-  if (currentData.popups && currentData.popups.length > 0) {
-    docChildren.push(new Paragraph({ text: 'Popups', heading: HeadingLevel.HEADING_1 }));
-
-    currentData.popups.forEach((popup) => {
-      docChildren.push(new Paragraph({ text: popup.name, heading: HeadingLevel.HEADING_2 }));
-
-      const rows = [
-        new TableRow({ children: [createLabelCell('Title', 30), createValueCell(popup.title || 'N/A', 70)] }),
-        new TableRow({ children: [createLabelCell('CallForm', 30), createValueCell(popup.callFormName || 'N/A', 70)] }),
-        new TableRow({ children: [createLabelCell('Dimensions', 30), createValueCell(`${popup.width} x ${popup.height}`, 70)] }),
-        new TableRow({ children: [createLabelCell('Grids', 30), createValueCell(popup.grids.join(', ') || 'None', 70)] }),
-      ];
-
-      docChildren.push(new Table({ rows: rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-      docChildren.push(new Paragraph({ text: '', spacing: { after: 400 } }));
-    });
-  }
-
   // --- WHEN NEW FORM INSTANCE ---
   if (currentData.whenNewFormInstance.length > 0) {
     docChildren.push(new Paragraph({ text: 'When New Form Instance', heading: HeadingLevel.HEADING_1 }));
@@ -214,347 +548,134 @@ async function downloadWord() {
     }
   }
 
-  // --- GRIDS ---
-  if (currentData.grids.length > 0) {
-    docChildren.push(new Paragraph({ text: 'Grids', heading: HeadingLevel.HEADING_1 }));
-
-    currentData.grids.forEach((grid) => {
-      // Grid Header
-      docChildren.push(new Paragraph({ text: `Grid: ${grid.name}`, heading: HeadingLevel.HEADING_2 }));
-
-      // Helper per permessi colorati
-      const createPermRun = (label, val) => {
-        const isTrue = String(val) === 'true';
-        return [new TextRun({ text: `${label}: `, size: 22, color: '111827' }), new TextRun({ text: String(val), bold: true, size: 22, color: isTrue ? '166534' : '991B1B' }), new TextRun({ text: '  ', size: 22 })];
-      };
-
-      const permCell = new TableCell({
-        children: [
-          new Paragraph({
-            children: [...createPermRun('I', grid.insertAllowed), ...createPermRun('U', grid.updateAllowed), ...createPermRun('D', grid.deleteAllowed)],
-            spacing: { before: 60, after: 60 },
-          }),
-        ],
-        width: { size: 80, type: WidthType.PERCENTAGE },
-        borders: {
-          top: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
-          bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
-          left: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
-          right: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
-        },
-        margins: { top: 80, bottom: 80, left: 80, right: 80 },
-      });
-
-      // Grid Info Table
-      const infoRows = [
-        new TableRow({ children: [createLabelCell('Label', 20), createValueCell(grid.label || '', 30), createLabelCell('Type', 20), createValueCell(grid.type || '', 30)] }),
-        new TableRow({ children: [createLabelCell('Tab', 20), createValueCell(grid.tab ? grid.tab.label : '', 30), createLabelCell('Ref', 20), createValueCell(grid.ref || '', 30)] }),
-        new TableRow({ children: [createLabelCell('Permissions', 20), permCell] }),
-      ];
-      docChildren.push(new Table({ rows: infoRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-      docChildren.push(new Paragraph({ text: '', spacing: { after: 240 } }));
-
-      // Templates
-      const tplKeys = Object.keys(grid.templates);
-      if (tplKeys.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Templates', heading: HeadingLevel.HEADING_3 }));
-        tplKeys.forEach((key) => {
-          docChildren.push(new Paragraph({ text: key, bold: true, spacing: { before: 200 } }));
-          docChildren.push(createCodeBlock(grid.templates[key], 'sql'));
-        });
-      }
-
-      // RPC Expand
-      if (grid.rpcExpand) {
-        docChildren.push(new Paragraph({ text: 'RPC Expand', heading: HeadingLevel.HEADING_3 }));
-        docChildren.push(createCodeBlock(grid.rpcExpand, 'sql'));
-        if (grid.rpcExpandInitOrderBy) {
-          docChildren.push(new Paragraph({ text: `Init Order By: ${grid.rpcExpandInitOrderBy}`, spacing: { before: 100 } }));
-        }
-      }
-
-      // Fields
-      if (grid.fields && grid.fields.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Fields', heading: HeadingLevel.HEADING_3 }));
-
-        const fieldHeader = new TableRow({
-          children: [
-            createHeaderCell('Type', 10),
-            createHeaderCell('Name', 15),
-            createHeaderCell('Label', 15),
-            createHeaderCell('Hint', 10),
-            createHeaderCell('Len', 5),
-            createHeaderCell('Mand', 5),
-            createHeaderCell('Edit', 5),
-            createHeaderCell('Hide', 5),
-            createHeaderCell('Regex', 30),
-          ],
-        });
-
-        const fieldRows = [fieldHeader];
-
-        // Ordina i campi per order (asc) e poi horder (asc)
-        const sortedFields = [...grid.fields].sort((a, b) => {
-          const orderA = parseInt(a.order, 10) || 0;
-          const orderB = parseInt(b.order, 10) || 0;
-          if (orderA !== orderB) return orderA - orderB;
-
-          const horderA = parseInt(a.horder, 10) || 0;
-          const horderB = parseInt(b.horder, 10) || 0;
-          return horderA - horderB;
-        });
-
-        sortedFields.forEach((f) => {
-          let regexText = '';
-          if (f.validRegex) {
-            regexText = `${f.validRegex.regex}\n${f.validRegex.message || ''}`;
-          }
-
-          fieldRows.push(
-            new TableRow({
-              children: [
-                createValueCell(f.tag || '', 10),
-                createValueCell(f.name || '', 15),
-                createValueCell(f.label || '', 15),
-                createValueCell(f.hint || '', 10),
-                createValueCell(f.length || '', 5),
-                createValueCell(f.isMandatory || '', 5),
-                createValueCell(f.isEditable || '', 5),
-                createValueCell(f.isHidden || '', 5),
-                createValueCell(regexText, 30),
-              ],
-            }),
-          );
-        });
-
-        docChildren.push(new Table({ rows: fieldRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-        docChildren.push(new Paragraph({ text: '', spacing: { after: 240 } }));
-      }
-
-      // LOVs
-      if (grid.listOfValues.length > 0) {
-        docChildren.push(new Paragraph({ text: 'List Of Values', heading: HeadingLevel.HEADING_3 }));
-        grid.listOfValues.forEach((lov) => {
-          docChildren.push(new Paragraph({ text: `${lov.name} ${lov.label ? `(${lov.label})` : ''}`, bold: true, spacing: { before: 200 } }));
-          if (lov.value) docChildren.push(createCodeBlock(lov.value, 'sql'));
-          if (lov.initOrderBy) docChildren.push(new Paragraph({ text: `Order By: ${lov.initOrderBy}` }));
-        });
-      }
-
-      // Comboboxes
-      if (grid.comboboxes.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Comboboxes', heading: HeadingLevel.HEADING_3 }));
-        grid.comboboxes.forEach((combo) => {
-          docChildren.push(new Paragraph({ text: `${combo.name} ${combo.label ? `(${combo.label})` : ''}`, bold: true, spacing: { before: 200 } }));
-          if (combo.sqlValue) {
-            docChildren.push(createCodeBlock(combo.sqlValue, 'sql'));
-          } else if (combo.rows.length > 0) {
-            const comboRows = [new TableRow({ children: [createHeaderCell('ID'), createHeaderCell('Label')] })];
-            combo.rows.forEach((r) => comboRows.push(new TableRow({ children: [createValueCell(r.id), createValueCell(r.label)] })));
-            docChildren.push(new Table({ rows: comboRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-          }
-        });
-      }
-
-      // CheckAndSaveData
-      if (grid.checkAndSaveData) {
-        const ops = ['insert', 'update', 'delete'];
-        const hasData = ops.some((op) => grid.checkAndSaveData[op].length > 0);
-
-        if (hasData) {
-          docChildren.push(new Paragraph({ text: 'CheckAndSaveData', heading: HeadingLevel.HEADING_3 }));
-          ops.forEach((op) => {
-            if (grid.checkAndSaveData[op].length > 0) {
-              docChildren.push(new Paragraph({ text: op.charAt(0).toUpperCase() + op.slice(1), bold: true, spacing: { before: 200 } }));
-              grid.checkAndSaveData[op].forEach((sql) => {
-                docChildren.push(createCodeBlock(sql, 'sql'));
-              });
-            }
+  // --- GLOBAL ACTIONS ---
+  if (currentData.globalActions && currentData.globalActions.length > 0) {
+    const usedActions = new Set();
+    if (currentData.whenNewFormInstance) {
+      currentData.whenNewFormInstance.forEach((a) => usedActions.add(a));
+    }
+    if (currentData.grids) {
+      currentData.grids.forEach((grid) => {
+        if (grid.events) {
+          grid.events.forEach((evt) => {
+            if (evt.actionRefs) evt.actionRefs.forEach((a) => usedActions.add(a));
           });
         }
-      }
+        if (grid.topToolbarButtons) {
+          grid.topToolbarButtons.forEach((btn) => {
+            if (btn.actionRef) btn.actionRef.forEach((a) => usedActions.add(a));
+          });
+        }
+        if (grid.bottomToolbarButtons) {
+          grid.bottomToolbarButtons.forEach((btn) => {
+            if (btn.actionRef) btn.actionRef.forEach((a) => usedActions.add(a));
+          });
+        }
+      });
+    }
 
-      // Before Commit Validation
-      if (grid.beforeCommitValidation.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Before Commit Validation', heading: HeadingLevel.HEADING_3 }));
-        grid.beforeCommitValidation.forEach((bc) => {
-          docChildren.push(new Paragraph({ text: bc.name, bold: true, spacing: { before: 200 } }));
-          if (bc.function) docChildren.push(new Paragraph({ text: `Function: ${bc.function}` }));
-          if (bc.failMessage) docChildren.push(new Paragraph({ text: `Fail Message: ${bc.failMessage}`, color: '991B1B' }));
-          docChildren.push(createCodeBlock(bc.sql, 'sql'));
-        });
-      }
+    const filteredGlobalActions = currentData.globalActions.filter((action) => !usedActions.has(action.actionName));
 
-      // Events
-      if (grid.events.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Events', heading: HeadingLevel.HEADING_3 }));
-        const sortedEvents = [...grid.events].sort((a, b) => {
-          const getPriority = (name) => {
-            const n = name.toLowerCase();
-            if (n.includes('whenexitchangedrecord')) return 1;
-            if (n.includes('whenfinishedit')) return 2;
-            if (n.includes('whenchangevalue')) return 3;
-            return 4;
-          };
-          return getPriority(a.name) - getPriority(b.name);
-        });
+    if (filteredGlobalActions.length > 0) {
+      docChildren.push(new Paragraph({ text: 'Global Actions (Definitions)', heading: HeadingLevel.HEADING_1 }));
 
-        sortedEvents.forEach((evt) => {
-          const evtTitle = `${evt.name}${evt.context ? ` (Field: ${evt.context})` : ''}`;
+      filteredGlobalActions.forEach((action) => {
+        docChildren.push(new Paragraph({ text: `Action: ${action.actionName}`, heading: HeadingLevel.HEADING_3 }));
+        if (action.openPopup && action.openPopup.name) {
           docChildren.push(
             new Paragraph({
-              children: [new TextRun({ text: evtTitle }), new TextRun({ text: evt.waitingWindow ? ' [Waiting Window]' : '', color: 'D97706', size: 20 })],
-              heading: HeadingLevel.HEADING_4,
+              children: [new TextRun({ text: 'Type: Open Popup | Name: ', size: 22 }), new TextRun({ text: action.openPopup.name, bold: true, size: 22 })],
+              spacing: { before: 60, after: 60 },
             }),
           );
-
-          if (evt.actionRefs.length > 0) {
-            docChildren.push(new Paragraph({ text: `Action Refs: ${evt.actionRefs.join(', ')}`, size: 20 }));
-          }
-
-          if (evt.groovyScripts.length > 0) {
-            evt.groovyScripts.forEach((action) => {
-              docChildren.push(
-                new Paragraph({
-                  children: [new TextRun({ text: `Action: ${action.actionName}`, size: 20, color: '1E40AF', bold: true })],
-                  spacing: { before: 100 },
-                }),
-              );
-              if (action.openPopup && action.openPopup.name) {
-                docChildren.push(
-                  new Paragraph({
-                    children: [new TextRun({ text: 'Type: Open Popup | Name: ', size: 20 }), new TextRun({ text: action.openPopup.name, bold: true, size: 20 })],
-                    spacing: { before: 60, after: 60 },
-                  }),
-                );
-              }
-              action.classes.forEach((cls) => {
-                if (cls.type === 'paramsList') {
-                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
-                  if (cls.params && cls.params.length > 0) {
-                    const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
-                    cls.params.forEach((p) => {
-                      paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
-                    });
-                    docChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-                  }
-                } else {
-                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
-                  if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
-                  docChildren.push(processCodeBlock(cls));
-                }
+        }
+        action.classes.forEach((cls) => {
+          if (cls.type === 'paramsList') {
+            docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, bold: true, size: 22, color: '374151' })], spacing: { before: 60 } }));
+            if (cls.params && cls.params.length > 0) {
+              const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
+              cls.params.forEach((p) => {
+                paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
               });
-            });
+              docChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+            }
+          } else {
+            docChildren.push(
+              new Paragraph({
+                children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, bold: true, size: 22, color: '374151' })],
+                spacing: { before: 60 },
+              }),
+            );
+            if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B' }));
+            docChildren.push(processCodeBlock(cls));
           }
         });
+      });
+    }
+  }
+
+  // --- GRIDS ---
+  currentData.grids.sort((a, b) => {
+    const orderA_raw = parseInt(a.order, 10);
+    const orderA = !isNaN(orderA_raw) ? orderA_raw : 9999;
+    const orderB_raw = parseInt(b.order, 10);
+    const orderB = !isNaN(orderB_raw) ? orderB_raw : 9999;
+    return orderA - orderB;
+  });
+
+  const popupGridNames = currentData.popups.flatMap((p) => p.grids);
+  const standaloneGrids = currentData.grids.filter((g) => !popupGridNames.includes(g.name));
+
+  if (standaloneGrids.length > 0) {
+    docChildren.push(new Paragraph({ text: 'Grids', heading: HeadingLevel.HEADING_1 }));
+
+    standaloneGrids.forEach((grid, index) => {
+      const gridContent = renderGridContent(grid, index > 0);
+      docChildren.push(...gridContent);
+    });
+  }
+
+  // --- POPUPS ---
+  if (currentData.popups && currentData.popups.length > 0) {
+    docChildren.push(new Paragraph({ text: 'Popups', heading: HeadingLevel.HEADING_1 }));
+
+    currentData.popups.forEach((popup, index) => {
+      // Page Break prima di ogni Popup
+      if (index > 0) {
+        docChildren.push(new Paragraph({ children: [new PageBreak()] }));
       }
 
-      // Top Toolbar Buttons
-      if (grid.topToolbarButtons && grid.topToolbarButtons.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Top Toolbar Buttons', heading: HeadingLevel.HEADING_3 }));
-        grid.topToolbarButtons.forEach((btn) => {
-          docChildren.push(new Paragraph({ text: `[${btn.type}] ${btn.name} - ${btn.label}`, bold: true, spacing: { before: 200 } }));
-          if (btn.callFormName) docChildren.push(new Paragraph({ text: `CallForm: ${btn.callFormName}` }));
-
-          if (btn.params && btn.params.length > 0) {
-            const paramText = btn.params.map((p) => `${p.name}=${p.alias}`).join(', ');
-            docChildren.push(new Paragraph({ text: `Params: ${paramText}`, size: 20 }));
-          }
-
-          if (btn.groovyScripts.length > 0) {
-            btn.groovyScripts.forEach((action) => {
-              docChildren.push(
-                new Paragraph({
-                  children: [new TextRun({ text: `Action: ${action.actionName}`, size: 20, color: '1E40AF', bold: true })],
-                  spacing: { before: 100 },
-                }),
-              );
-              if (action.openPopup && action.openPopup.name) {
-                docChildren.push(
-                  new Paragraph({
-                    children: [new TextRun({ text: 'Type: Open Popup | Name: ', size: 20 }), new TextRun({ text: action.openPopup.name, bold: true, size: 20 })],
-                    spacing: { before: 60, after: 60 },
-                  }),
-                );
-              }
-              action.classes.forEach((cls) => {
-                if (cls.type === 'paramsList') {
-                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
-                  if (cls.params && cls.params.length > 0) {
-                    const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
-                    cls.params.forEach((p) => {
-                      paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
-                    });
-                    docChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-                  }
-                } else {
-                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
-                  if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
-                  docChildren.push(processCodeBlock(cls));
-                }
-              });
-            });
-          }
-        });
-      }
-
-      // Buttons
-      if (grid.bottomToolbarButtons.length > 0) {
-        docChildren.push(new Paragraph({ text: 'Buttons', heading: HeadingLevel.HEADING_3 }));
-        grid.bottomToolbarButtons.forEach((btn) => {
-          docChildren.push(new Paragraph({ text: `[${btn.type}] ${btn.name} - ${btn.label}`, bold: true, spacing: { before: 200 } }));
-          if (btn.callFormName) docChildren.push(new Paragraph({ text: `CallForm: ${btn.callFormName}` }));
-
-          if (btn.params && btn.params.length > 0) {
-            const paramText = btn.params.map((p) => `${p.name}=${p.alias}`).join(', ');
-            docChildren.push(new Paragraph({ text: `Params: ${paramText}`, size: 20 }));
-          }
-
-          if (btn.groovyScripts.length > 0) {
-            btn.groovyScripts.forEach((action) => {
-              docChildren.push(
-                new Paragraph({
-                  children: [new TextRun({ text: `Action: ${action.actionName}`, size: 20, color: '1E40AF', bold: true })],
-                  spacing: { before: 100 },
-                }),
-              );
-              if (action.openPopup && action.openPopup.name) {
-                docChildren.push(
-                  new Paragraph({
-                    children: [new TextRun({ text: 'Type: Open Popup | Name: ', size: 20 }), new TextRun({ text: action.openPopup.name, bold: true, size: 20 })],
-                    spacing: { before: 60, after: 60 },
-                  }),
-                );
-              }
-              action.classes.forEach((cls) => {
-                if (cls.type === 'paramsList') {
-                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> Param List (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
-                  if (cls.params && cls.params.length > 0) {
-                    const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
-                    cls.params.forEach((p) => {
-                      paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
-                    });
-                    docChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-                  }
-                } else {
-                  docChildren.push(new Paragraph({ children: [new TextRun({ text: `>> ${cls.type} (${cls.className})`, size: 20, color: '111827', bold: true, font: 'Aptos' })] }));
-                  if (cls.failMessage) docChildren.push(new Paragraph({ text: `Fail Msg: ${cls.failMessage}`, color: '991B1B', size: 18 }));
-                  docChildren.push(processCodeBlock(cls));
-                }
-              });
-            });
-          }
-        });
-      }
-
-      // Separatore Grid
       docChildren.push(
         new Paragraph({
-          text: '',
-          border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'E5E7EB' } },
-          spacing: { after: 480 },
+          children: [new TextRun({ text: `Popup: ${popup.name}`, color: 'C2410C' })],
+          heading: HeadingLevel.HEADING_2,
         }),
       );
+
+      const rows = [
+        new TableRow({ children: [createLabelCell('Title', 30), createValueCell(popup.title || 'N/A', 70)] }),
+        new TableRow({ children: [createLabelCell('CallForm', 30), createValueCell(popup.callFormName || 'N/A', 70)] }),
+        new TableRow({ children: [createLabelCell('Dimensions', 30), createValueCell(`${popup.width} x ${popup.height}`, 70)] }),
+        new TableRow({ children: [createLabelCell('Grids', 30), createValueCell(popup.grids.join(', ') || 'None', 70)] }),
+      ];
+      docChildren.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+      docChildren.push(new Paragraph({ text: '', spacing: { after: 200 } }));
+
+      if (popup.params && popup.params.length > 0) {
+        docChildren.push(new Paragraph({ text: 'Parametri Chiamata', heading: HeadingLevel.HEADING_3 }));
+        const paramRows = [new TableRow({ children: [createHeaderCell('Name'), createHeaderCell('Alias')] })];
+        popup.params.forEach((p) => {
+          paramRows.push(new TableRow({ children: [createValueCell(p.name), createValueCell(p.alias)] }));
+        });
+        docChildren.push(new Table({ rows: paramRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+        docChildren.push(new Paragraph({ text: '', spacing: { after: 200 } }));
+      }
+
+      const gridsInPopup = currentData.grids.filter((g) => popup.grids.includes(g.name));
+      gridsInPopup.forEach((grid, gIndex) => {
+        const gridContent = renderGridContent(grid, gIndex > 0);
+        docChildren.push(...gridContent);
+      });
     });
   }
 

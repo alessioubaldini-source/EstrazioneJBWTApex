@@ -15,6 +15,7 @@ function parseXML(xmlText) {
     description: null,
     whenNewFormInstance: [],
     whenNewFormInstanceGroovy: [],
+    globalActions: [],
     moduleInfo: getModuleRange(currentFilename),
     formParams: [],
   };
@@ -23,6 +24,14 @@ function parseXML(xmlText) {
   if (commentMatch && commentMatch[1]) {
     result.description = decodeJBWTMessage(commentMatch[1].trim());
   }
+
+  // Populate globalActions
+  Object.keys(globalActionsMap).forEach((key) => {
+    result.globalActions.push({
+      actionName: key,
+      ...globalActionsMap[key],
+    });
+  });
 
   const formParamNodes = xmlDoc.querySelectorAll('form > params > param, form > param');
   formParamNodes.forEach((p) => {
@@ -106,6 +115,7 @@ function parseXML(xmlText) {
       label: decodeJBWTMessage(grid.getAttribute('label')),
       type: grid.getAttribute('type'),
       ref: grid.getAttribute('ref'),
+      order: grid.getAttribute('order'),
       insertAllowed: insertAttr !== null ? insertAttr : parsedCheckAndSaveData && parsedCheckAndSaveData.insert.length > 0 ? 'true' : 'false',
       updateAllowed: updateAttr !== null ? updateAttr : parsedCheckAndSaveData && parsedCheckAndSaveData.update.length > 0 ? 'true' : 'false',
       deleteAllowed: deleteAttr !== null ? deleteAttr : parsedCheckAndSaveData && parsedCheckAndSaveData.delete.length > 0 ? 'true' : 'false',

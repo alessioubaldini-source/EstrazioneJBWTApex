@@ -78,8 +78,72 @@ function downloadExcel() {
     XLSX.utils.book_append_sheet(wb, wsWNFI, 'WNFI');
   }
 
+  // 1.5 Foglio GLOBAL ACTIONS (Filtered)
+  if (currentData.globalActions && currentData.globalActions.length > 0) {
+    const usedActions = new Set();
+    if (currentData.whenNewFormInstance) {
+      currentData.whenNewFormInstance.forEach((a) => usedActions.add(a));
+    }
+    if (currentData.grids) {
+      currentData.grids.forEach((grid) => {
+        if (grid.events) {
+          grid.events.forEach((evt) => {
+            if (evt.actionRefs) evt.actionRefs.forEach((a) => usedActions.add(a));
+          });
+        }
+        if (grid.topToolbarButtons) {
+          grid.topToolbarButtons.forEach((btn) => {
+            if (btn.actionRef) btn.actionRef.forEach((a) => usedActions.add(a));
+          });
+        }
+        if (grid.bottomToolbarButtons) {
+          grid.bottomToolbarButtons.forEach((btn) => {
+            if (btn.actionRef) btn.actionRef.forEach((a) => usedActions.add(a));
+          });
+        }
+      });
+    }
+
+    const filteredGlobalActions = currentData.globalActions.filter((action) => !usedActions.has(action.actionName));
+
+    if (filteredGlobalActions.length > 0) {
+      const gaRows = [];
+      gaRows.push(['GLOBAL ACTIONS (UNUSED/GENERIC)']);
+      gaRows.push(['Action', 'Type', 'Class', 'Fail Msg', 'Code']);
+
+      filteredGlobalActions.forEach((action) => {
+        if (action.openPopup && action.openPopup.name) {
+          gaRows.push([action.actionName, 'Open Popup', '', '', `Name: ${action.openPopup.name}`]);
+        }
+        action.classes.forEach((item) => {
+          if (item.type === 'groovy') {
+            gaRows.push([action.actionName, 'Groovy', item.className, item.failMessage || '', item.script]);
+          } else if (item.type === 'sql') {
+            gaRows.push([action.actionName, 'SQL', item.className, item.failMessage || '', item.sql]);
+          } else if (item.type === 'paramsList') {
+            const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('\n');
+            gaRows.push([action.actionName, 'Params List', item.className, '', paramsText]);
+          }
+        });
+      });
+
+      const wsGA = XLSX.utils.aoa_to_sheet(gaRows);
+      wsGA['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 80 }];
+      setBoldHeaders(wsGA, gaRows);
+      XLSX.utils.book_append_sheet(wb, wsGA, 'GLOBAL_ACTIONS');
+    }
+  }
+
   // 2. Fogli per ogni Grid
-  currentData.grids.forEach((grid) => {
+  const sortedGrids = [...currentData.grids].sort((a, b) => {
+    const orderA_raw = parseInt(a.order, 10);
+    const orderA = !isNaN(orderA_raw) ? orderA_raw : 9999;
+    const orderB_raw = parseInt(b.order, 10);
+    const orderB = !isNaN(orderB_raw) ? orderB_raw : 9999;
+    return orderA - orderB;
+  });
+
+  sortedGrids.forEach((grid) => {
     const rows = [];
 
     // Header Info
