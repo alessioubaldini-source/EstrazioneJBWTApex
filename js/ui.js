@@ -667,13 +667,13 @@ function renderWizard(gridName) {
   }
 }
 
-function showInfoPopup(title, contentHtml) {
+function showInfoPopup(title, contentHtml, width = '800px') {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay open';
 
   const modal = document.createElement('div');
   modal.className = 'modal';
-  modal.style.maxWidth = '800px';
+  modal.style.maxWidth = width;
   modal.style.maxHeight = '90vh';
   modal.style.display = 'flex';
   modal.style.flexDirection = 'column';

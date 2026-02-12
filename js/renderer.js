@@ -3,21 +3,25 @@ function renderData(data) {
 
   // Ordina le grid per la proprietà "order"
   if (data.grids) {
-    data.grids.sort((a, b) => {
-      const orderA_raw = parseInt(a.order, 10);
-      const orderA = !isNaN(orderA_raw) ? orderA_raw : 9999;
-      const orderB_raw = parseInt(b.order, 10);
-      const orderB = !isNaN(orderB_raw) ? orderB_raw : 9999;
-      return orderA - orderB;
-    });
+    currentData = data; // Salva i dati globalmente
   }
-
-  currentData = data; // Salva i dati globalmente
   document.getElementById('downloadBtn').disabled = false;
   document.getElementById('downloadWordBtn').disabled = false;
   document.getElementById('downloadTestBtn').disabled = false;
   document.getElementById('downloadApexBtn').disabled = false;
   document.getElementById('wizardModeBtn').disabled = false;
+
+  // Aggiunge il bottone Mappa Layout accanto al bottone Test se non esiste
+  const testBtn = document.getElementById('downloadTestBtn');
+  if (testBtn && !document.getElementById('btnLayoutMap')) {
+    const btn = document.createElement('button');
+    btn.id = 'btnLayoutMap';
+    btn.className = testBtn.className;
+    btn.innerHTML = '🗺️ Mappa';
+    btn.onclick = window.showLayoutMapModal;
+    testBtn.parentNode.insertBefore(btn, testBtn.nextSibling);
+  }
+
   updateProgressBar();
 
   const content = document.getElementById('content');
@@ -124,11 +128,41 @@ function renderData(data) {
       <h3>📌 Indice Grids</h3>
       <ul>`;
 
-  const sbPopupGridNames = data.popups ? data.popups.flatMap((p) => p.grids) : [];
-  const sbStandaloneGrids = data.grids.filter((g) => !sbPopupGridNames.includes(g.name));
-  const sbPopupGrids = data.grids.filter((g) => sbPopupGridNames.includes(g.name));
-  const sbAllGrids = [...sbStandaloneGrids, ...sbPopupGrids];
+  const popupGridNames = data.popups ? data.popups.flatMap((p) => p.grids) : [];
 
+  const getOrder = (item) => {
+    const order_raw = parseInt(item.order, 10);
+    return !isNaN(order_raw) ? order_raw : 9999;
+  };
+
+  // 1. Standalone grids
+  const standaloneGrids = data.grids.filter((g) => !g.tab && !popupGridNames.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
+
+  // 2. Tab grids
+  const tabs = {};
+  data.grids
+    .filter((g) => g.tab && !popupGridNames.includes(g.name))
+    .forEach((g) => {
+      if (!tabs[g.tab.name]) {
+        tabs[g.tab.name] = {
+          ...g.tab,
+          grids: [],
+        };
+      }
+      tabs[g.tab.name].grids.push(g);
+    });
+
+  const sortedTabs = Object.values(tabs).sort((a, b) => getOrder(a) - getOrder(b));
+  const tabGrids = [];
+  sortedTabs.forEach((tab) => {
+    tab.grids.sort((a, b) => getOrder(a) - getOrder(b));
+    tabGrids.push(...tab.grids);
+  });
+
+  // 3. Popup grids
+  const popupGrids = data.grids.filter((g) => popupGridNames.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
+
+  const sbAllGrids = [...standaloneGrids, ...tabGrids, ...popupGrids];
   sbAllGrids.forEach((grid) => {
     const hasTemplates = Object.keys(grid.templates).length > 0;
 
@@ -487,14 +521,35 @@ function renderData(data) {
   };
 
   // --- RENDER STANDALONE GRIDS ---
-  const popupGridNames = data.popups ? data.popups.flatMap((p) => p.grids) : [];
-  const standaloneGrids = data.grids.filter((g) => !popupGridNames.includes(g.name));
 
   if (standaloneGrids.length > 0) {
     html += `<h2 style="margin-top: 20px; margin-bottom: 10px; font-size: 1.5rem; color: #111827;">Grids</h2>`;
     standaloneGrids.forEach((grid) => {
       const idx = data.grids.indexOf(grid);
       html += renderGridHtml(grid, idx);
+    });
+  }
+
+  // --- RENDER TABS ---
+
+  if (sortedTabs.length > 0) {
+    html += `<h2 style="margin-top: 40px; margin-bottom: 10px; font-size: 1.5rem; color: #111827;">Tabs</h2>`;
+    sortedTabs.forEach((tab) => {
+      html += `
+        <div class="section">
+          <div class="section-header" style="background-color: #fefce8; border-left: 4px solid #a16207;">
+             <span style="font-size: 1.1em; font-weight: bold; color: #854d0e;">Tab: ${tab.label || tab.name}</span>
+          </div>
+          <div class="section-content open" style="padding: 15px;">
+             <div class="tab-grids">
+                ${tab.grids
+                  .sort((a, b) => getOrder(a) - getOrder(b))
+                  .map((grid) => renderGridHtml(grid, data.grids.indexOf(grid)))
+                  .join('')}
+             </div>
+          </div>
+        </div>
+      `;
     });
   }
 
@@ -536,6 +591,7 @@ function renderData(data) {
              <div class="popup-grids">
                 ${data.grids
                   .filter((g) => popup.grids.includes(g.name))
+                  .sort((a, b) => getOrder(a) - getOrder(b))
                   .map((grid) => renderGridHtml(grid, data.grids.indexOf(grid)))
                   .join('')}
              </div>
@@ -696,4 +752,142 @@ function renderGroovyScripts(scripts, prefix) {
   }
 
   return content;
+}
+
+window.showLayoutMapModal = function () {
+  if (!currentData) return;
+  const html = renderLayoutMap(currentData);
+  showInfoPopup('Mappa Layout Maschera', html, '90%');
+};
+
+function renderLayoutMap(data) {
+  const styles = `
+    <style>
+      .layout-map-container { display: flex; flex-direction: column; gap: 24px; font-family: 'Segoe UI', sans-serif; padding: 10px; }
+      .layout-area { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+      .layout-area-title { font-size: 1.1rem; font-weight: 600; color: #334155; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; }
+      .layout-flex-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+      .layout-card { background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; min-width: 280px; flex: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; }
+      .layout-card.tab-card { border-top: 4px solid #8b5cf6; }
+      .layout-card.popup-card { border-top: 4px solid #f97316; border-style: dashed; }
+      .layout-card.standalone-card { border-top: 4px solid #64748b; }
+      .card-header { font-weight: 700; font-size: 1rem; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+      .grid-item { background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px; border-radius: 4px; font-size: 0.9rem; position: relative; }
+      .grid-item.has-master { border-left: 4px solid #10b981; }
+      .grid-item-header { font-weight: 600; color: #1d4ed8; display: flex; justify-content: space-between; align-items: center; }
+      .grid-item-detail { font-size: 0.8rem; color: #64748b; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px; }
+      .badge-mini { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: #e2e8f0; color: #475569; font-weight: 600; }
+      .master-ref { color: #059669; font-weight: 600; font-size: 0.8rem; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #bbf7d0; display: flex; align-items: center; gap: 4px; }
+    </style>
+  `;
+
+  const getOrder = (item) => {
+    const order_raw = parseInt(item.order, 10);
+    return !isNaN(order_raw) ? order_raw : 9999;
+  };
+
+  const renderGridItem = (grid) => {
+    const isMaster = data.grids.some((g) => g.masterRegion === grid.name);
+    const hasMaster = !!grid.masterRegion;
+
+    return `
+      <div class="grid-item ${hasMaster ? 'has-master' : ''}">
+        <div class="grid-item-header">
+          <span>📄 ${grid.name}</span>
+          ${isMaster ? '<span class="badge-mini" style="background:#dcfce7; color:#166534;">MASTER</span>' : ''}
+        </div>
+        <div class="grid-item-detail">
+          <span class="badge-mini">${grid.type || 'Grid'}</span>
+          ${grid.label ? `<span>${grid.label}</span>` : ''}
+        </div>
+        ${hasMaster ? `<div class="master-ref">🔗 Detail of: ${grid.masterRegion}</div>` : ''}
+      </div>
+    `;
+  };
+
+  // 1. Prepare Data
+  const popupGridNames = data.popups ? data.popups.flatMap((p) => p.grids) : [];
+
+  // Tabs
+  const tabs = {};
+  data.grids
+    .filter((g) => g.tab && !popupGridNames.includes(g.name))
+    .forEach((g) => {
+      if (!tabs[g.tab.name]) tabs[g.tab.name] = { ...g.tab, grids: [] };
+      tabs[g.tab.name].grids.push(g);
+    });
+  const sortedTabs = Object.values(tabs).sort((a, b) => getOrder(a) - getOrder(b));
+
+  // Popups
+  const popups = data.popups.map((p) => ({
+    ...p,
+    grids: data.grids.filter((g) => p.grids.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b)),
+  }));
+
+  // Standalone
+  const standaloneGrids = data.grids.filter((g) => !g.tab && !popupGridNames.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
+
+  // 2. Build HTML
+  let html = `<div class="layout-map-container">${styles}`;
+
+  // Section: Standalone
+  if (standaloneGrids.length > 0) {
+    html += `
+      <div class="layout-area">
+        <div class="layout-area-title">📄 Standalone Grids</div>
+        <div class="layout-flex-row">
+          <div class="layout-card standalone-card">
+            <div class="card-header">Main Canvas</div>
+            ${standaloneGrids.map(renderGridItem).join('')}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Section: Tabs
+  if (sortedTabs.length > 0) {
+    html += `
+      <div class="layout-area">
+        <div class="layout-area-title">📂 Tabs Container</div>
+        <div class="layout-flex-row">
+          ${sortedTabs
+            .map(
+              (tab) => `
+            <div class="layout-card tab-card">
+              <div class="card-header"><span>${tab.label || tab.name}</span> <span class="badge-mini">Tab</span></div>
+              ${tab.grids
+                .sort((a, b) => getOrder(a) - getOrder(b))
+                .map(renderGridItem)
+                .join('')}
+            </div>
+          `,
+            )
+            .join('')}
+        </div>
+      </div>`;
+  }
+
+  // Section: Popups
+  if (popups.length > 0) {
+    html += `
+      <div class="layout-area">
+        <div class="layout-area-title">💬 Popups</div>
+        <div class="layout-flex-row">
+          ${popups
+            .map(
+              (popup) => `
+            <div class="layout-card popup-card">
+              <div class="card-header"><span>${popup.name}</span> <span class="badge-mini">Popup</span></div>
+              <div style="font-size:0.8rem; color:#64748b; margin-bottom:5px;">${popup.title || ''} (${popup.width}x${popup.height})</div>
+              ${popup.grids.map(renderGridItem).join('')}
+            </div>
+          `,
+            )
+            .join('')}
+        </div>
+      </div>`;
+  }
+
+  html += `</div>`;
+  return html;
 }

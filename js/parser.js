@@ -120,6 +120,7 @@ function parseXML(xmlText) {
       updateAllowed: updateAttr !== null ? updateAttr : parsedCheckAndSaveData && parsedCheckAndSaveData.update.length > 0 ? 'true' : 'false',
       deleteAllowed: deleteAttr !== null ? deleteAttr : parsedCheckAndSaveData && parsedCheckAndSaveData.delete.length > 0 ? 'true' : 'false',
       tab: findParentTab(grid),
+      masterRegion: grid.getAttribute('masterRegion'),
       rpcExpand: null,
       rpcExpandInitOrderBy: null,
       rpcExpandInit: null,

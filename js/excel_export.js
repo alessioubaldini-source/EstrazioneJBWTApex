@@ -135,14 +135,41 @@ function downloadExcel() {
   }
 
   // 2. Fogli per ogni Grid
-  const sortedGrids = [...currentData.grids].sort((a, b) => {
-    const orderA_raw = parseInt(a.order, 10);
-    const orderA = !isNaN(orderA_raw) ? orderA_raw : 9999;
-    const orderB_raw = parseInt(b.order, 10);
-    const orderB = !isNaN(orderB_raw) ? orderB_raw : 9999;
-    return orderA - orderB;
+  const getOrder = (item) => {
+    const order_raw = parseInt(item.order, 10);
+    return !isNaN(order_raw) ? order_raw : 9999;
+  };
+
+  const popupGridNames = currentData.popups ? currentData.popups.flatMap((p) => p.grids) : [];
+
+  // 1. Standalone grids
+  const standaloneGrids = currentData.grids.filter((g) => !g.tab && !popupGridNames.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
+
+  // 2. Tab grids
+  const tabs = {};
+  currentData.grids
+    .filter((g) => g.tab && !popupGridNames.includes(g.name))
+    .forEach((g) => {
+      if (!tabs[g.tab.name]) {
+        tabs[g.tab.name] = {
+          ...g.tab,
+          grids: [],
+        };
+      }
+      tabs[g.tab.name].grids.push(g);
+    });
+
+  const sortedTabs = Object.values(tabs).sort((a, b) => getOrder(a) - getOrder(b));
+  const tabGrids = [];
+  sortedTabs.forEach((tab) => {
+    tab.grids.sort((a, b) => getOrder(a) - getOrder(b));
+    tabGrids.push(...tab.grids);
   });
 
+  // 3. Popup grids
+  const popupGrids = currentData.grids.filter((g) => popupGridNames.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
+
+  const sortedGrids = [...standaloneGrids, ...tabGrids, ...popupGrids];
   sortedGrids.forEach((grid) => {
     const rows = [];
 

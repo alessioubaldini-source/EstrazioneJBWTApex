@@ -614,17 +614,14 @@ async function downloadWord() {
     }
   }
 
-  // --- GRIDS ---
-  currentData.grids.sort((a, b) => {
-    const orderA_raw = parseInt(a.order, 10);
-    const orderA = !isNaN(orderA_raw) ? orderA_raw : 9999;
-    const orderB_raw = parseInt(b.order, 10);
-    const orderB = !isNaN(orderB_raw) ? orderB_raw : 9999;
-    return orderA - orderB;
-  });
+  const getOrder = (item) => {
+    const order_raw = parseInt(item.order, 10);
+    return !isNaN(order_raw) ? order_raw : 9999;
+  };
 
+  // --- GRIDS ---
   const popupGridNames = currentData.popups.flatMap((p) => p.grids);
-  const standaloneGrids = currentData.grids.filter((g) => !popupGridNames.includes(g.name));
+  const standaloneGrids = currentData.grids.filter((g) => !g.tab && !popupGridNames.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
 
   if (standaloneGrids.length > 0) {
     docChildren.push(new Paragraph({ text: 'Grids', heading: HeadingLevel.HEADING_1 }));
@@ -632,6 +629,45 @@ async function downloadWord() {
     standaloneGrids.forEach((grid, index) => {
       const gridContent = renderGridContent(grid, index > 0);
       docChildren.push(...gridContent);
+    });
+  }
+
+  // --- TABS ---
+  const tabs = {};
+  currentData.grids
+    .filter((g) => g.tab && !popupGridNames.includes(g.name))
+    .forEach((g) => {
+      if (!tabs[g.tab.name]) {
+        tabs[g.tab.name] = {
+          ...g.tab,
+          grids: [],
+        };
+      }
+      tabs[g.tab.name].grids.push(g);
+    });
+
+  const sortedTabs = Object.values(tabs).sort((a, b) => getOrder(a) - getOrder(b));
+
+  if (sortedTabs.length > 0) {
+    docChildren.push(new Paragraph({ text: 'Tabs', heading: HeadingLevel.HEADING_1 }));
+
+    sortedTabs.forEach((tab, index) => {
+      if (index > 0) {
+        docChildren.push(new Paragraph({ children: [new PageBreak()] }));
+      }
+
+      docChildren.push(
+        new Paragraph({
+          children: [new TextRun({ text: `Tab: ${tab.label || tab.name}`, color: '854d0e' })],
+          heading: HeadingLevel.HEADING_2,
+        }),
+      );
+
+      const gridsInTab = tab.grids.sort((a, b) => getOrder(a) - getOrder(b));
+      gridsInTab.forEach((grid, gIndex) => {
+        const gridContent = renderGridContent(grid, gIndex > 0);
+        docChildren.push(...gridContent);
+      });
     });
   }
 
@@ -671,7 +707,7 @@ async function downloadWord() {
         docChildren.push(new Paragraph({ text: '', spacing: { after: 200 } }));
       }
 
-      const gridsInPopup = currentData.grids.filter((g) => popup.grids.includes(g.name));
+      const gridsInPopup = currentData.grids.filter((g) => popup.grids.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
       gridsInPopup.forEach((grid, gIndex) => {
         const gridContent = renderGridContent(grid, gIndex > 0);
         docChildren.push(...gridContent);
