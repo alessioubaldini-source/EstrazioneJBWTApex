@@ -99,7 +99,6 @@ PER REQUEST (MEMORY)`,
     title: 'PARTICOLARITÀ DI POPUP LOV E SELECT LIST',
     items: [
       { id: 'I1', name: 'Title', label: 'Impostare il title della lov (Plurale della label, esempio Label: Tipo Cluster --> Tipi Cluster)' },
-      { id: 'I2', name: 'Settings - Search As You Type', label: 'Impostare a S' },
       { id: 'I3', name: 'List of Values - Type', label: 'Nel caso in cui il campo sia una Popup Lov oppure una Select List dovrà essere basata su SHARED COMPONENTS' },
       { id: 'I4', name: 'Display Null Value', label: 'Impostare a S' },
       { id: 'I5', name: 'Null Display Value', label: 'Impostare il carattere - ' },

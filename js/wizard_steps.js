@@ -103,7 +103,7 @@ const wizardSteps = [
         title: 'Tipologia e Impostazioni',
         description: 'Applica la tipologia corretta per ogni fields',
         notaBene: `<h4 style="color: #b45309; font-weight:bold; margin-bottom:8px;">Read Only</h4>
-                <p class="text-sm">Per ogni fields che è Read Only impostare la classe "custom-readonly" nell'Appearence CSS Class dell'item.</p>`,
+                <p class="text-sm">Per ogni fields che è Read Only impostare la classe <strong>"custom-readonly"</strong> nell'Appearence CSS Class dell'item.</p>`,
         content: (grid) => {
           let html = `<table class="table"><thead><tr><th>Field</th><th>Type</th><th>Hint (riportare solo se significativa)</th><th>Settings & Notes</th></tr></thead><tbody>`;
           //console.log('Fields da processare:', grid.fields);
@@ -126,7 +126,7 @@ const wizardSteps = [
               const safeLovName = lov.name.replace(/'/g, "\\'");
               notes.push(`LOV: <a href="javascript:void(0)" onclick="window.showLovDetails('${safeGridName}', '${safeLovName}', 'lov')" style="color: #2563eb; text-decoration: underline; font-weight: bold;">${lov.name}</a>`);
               notes.push('Display as: <strong>Modal Dialog</strong>');
-              notes.push('Search As you Type: <strong>SI</strong>');
+              notes.push('Search As you Type: <strong>NO</strong>');
               notes.push('Title: <strong>Plurale del nome del LOV</strong>');
               notes.push('Display Extra Values: <strong>SI</strong>');
               notes.push('Display null Values: <strong>SI</strong>');
@@ -414,14 +414,14 @@ const wizardSteps = [
     title: 'Step 6: Abilitazioni',
     substeps: [
       {
-        id: 'sub_6_1',
-        title: 'Conversione Groovy in PLSQL',
-        description: 'Convertire il groovy presente nel WhenNewFormInstance (una tantum), whenNewRecordInstance e whenRecordFetched in PLSQL',
+        id: 'sub_6_intro',
+        title: 'Conversione Logica',
+        description: 'Converti la logica Groovy in PL/SQL come primo passo per tutti gli scenari.',
         notaBene: 'Analizzare il <strong>whenRecordFetched</strong> per capire se sono gestite abilitazioni o controlli',
         content: (grid) => {
           const events = grid.events.filter((e) => ['whennewrecordinstance', 'whenRecordFetched'].includes(e.name.toLowerCase()));
           if (events.length === 0) return '<p class="text-gray">Nessun evento di inizializzazione record trovato.</p>';
-          let html = 'Seguire gli step definiti nel Wiki della community, capitolo "Gestione Abilitazioni Complesse" per la conversione facilitata del groovy';
+          let html = 'Seguire gli step definiti nel Wiki della community, capitolo "Gestione Abilitazioni Complesse" per la conversione facilitata del groovy. Qui sotto gli script da analizzare:';
           events.forEach((evt, idx) => {
             html += renderEventBlock(evt, 0, `wiz-converts-${grid.name}-${idx}`);
           });
@@ -429,119 +429,160 @@ const wizardSteps = [
         },
       },
       {
-        id: 'sub_6_2',
-        title: 'Before Header',
-        description: 'Gestione WhenNewFormInstance nel Before Header (SOLO SE NON GIA DEFINITO)',
+        id: 'sub_6_master',
+        title: 'Scenario: Grid Master',
+        description: 'Implementazione per una grid che funge da master e non ha dipendenze.',
         content: (grid) => {
-          let html = `Nel plsql del Before Header dovrà essere richiamata la procedura di WhenNewFormInstance e salvare su un page item il valore dell'abilitazione dell'inserimento SUL GRID MASTER`;
-          html += renderCodeBlock(
-            `KCxxx_xxx_xxx_APEX.P_WNFI_ABI(v('APP_PAGE_ID'), :Pxxxx_C_VAR, :Pxxxx_P_N_PRG, :Pxxx_C_TIP_GST);
-	
-:Pxxx_F_ABI_INS_${grid.name}:= KX003_ABI_UTL_APEX.F_ABI_INS_MST(v('APP_PAGE_ID'), :Pxxxx_C_VAR, '${grid.name}');
-`,
-            `wiz-befhdr-${grid.name}`,
-          );
+          let html = `
+                    <h4>Passo 1: Before Header</h4>
+                    <p>Nel PL/SQL del Before Header, richiama la procedura di WNFI e salva l'abilitazione per l'inserimento su un Page Item. <strong>(SOLO SE NON GIÀ DEFINITO)</strong></p>
+                    ${renderCodeBlock(`KCxxx_xxx_xxx_APEX.P_WNFI_ABI(v('APP_PAGE_ID'), :Pxxxx_C_VAR, :Pxxxx_P_N_PRG, :Pxxx_C_TIP_GST);\n\n:Pxxx_F_ABI_INS_${grid.name}:= KX003_ABI_UTL_APEX.F_ABI_INS_MST(v('APP_PAGE_ID'), :Pxxxx_C_VAR, '${grid.name}');`, `wiz-master-bh-${grid.name}`)}
+
+                    <h4>Passo 2: Page Load</h4>
+                    <p>Crea un'azione JavaScript per abilitare/disabilitare l'inserimento sul master in base al Page Item valorizzato prima.</p>
+                    ${renderCodeBlock(`let f_abi_ins_${grid.name.toLowerCase()} = $v("Pxxx_F_ABI_INS_${grid.name}") == 'true' ? true : false;\n\nApexUtils.toggleIgInsert ("${grid.name}", f_abi_ins_${grid.name.toLowerCase()});`, `wiz-master-pl-${grid.name}`, 'javascript')}
+
+                    <h4>Passo 3: Query della Grid</h4>
+                    <p>Aggiungi alla query della grid la colonna <code>ID_ROW_ABI</code> per identificare univocamente la riga.</p>
+                    ${renderCodeBlock(`TXXX.COL1||';'||To_Char(TXXX.COL2,'ddmmyyyy') ID_ROW_ABI`, `wiz-master-query-${grid.name}`)}
+
+                    <h4>Passo 4: Plugin Abilitazioni</h4>
+                    <p>Nel Page Load, aggiungi una Dynamic Action che esegue il plugin "IG Lazy Permission".</p>
+                    <ul>
+                        <li><strong>Selection Type:</strong> Region</li>
+                        <li><strong>Region:</strong> ${grid.name}</li>
+                        <li><strong>PL/SQL Logic:</strong> Vedi sotto </li>
+                        <li><strong>ID Abilitazione:</strong> ID_ROW_ABI</li>
+                        <li><strong>Items to Submit:</strong> Inserisci i Page Item necessari (es. Pxxxx_C_VAR).</li>
+                        <li><strong>Gestione Record:</strong> SI</li>
+                        <li><strong>Mater Region:</strong> (lasciare vuoto)</li>
+                    </ul>
+                    ${renderCodeBlock(
+                      `DECLARE
+    v_t_upd        varchar2(2);
+    v_pk_val       varchar2(4000) := :PK_VALUE; -- verrà sostituito dal plugin con la colonna ID_ROW_ABI
+    v_detail varchar2(100):=''; -- TODO: Inserire gli static ID delle grid detail separati da virgola
+    v_reg varchar2(100):=:REGION_STATIC_ID; -- Static ID della region, verrà sostituito dal plugin
+BEGIN
+    v_t_upd := KX003_ABI_UTL_APEX.F_GET_ABI(v('APP_PAGE_ID'),v('Pxxxx_C_VAR'),'WNRI', v_pk_val ,v_reg,null,'UD');
+    :PERMS_JSON := KX003_ABI_UTL_APEX.F_GET_ABI_JSON(v('APP_PAGE_ID'),v('Pxxxx_C_VAR'),
+                    v_reg||','||v_detail, -- Elenco delle region per cui deve essere gestite le abilitazioni di cella
+                    v_t_upd, 
+                    v_pk_val,
+                    v_detail -- Elenco delle region detail per cui deve essere gestito l'insert Allowed
+                    );
+END;`,
+                      `wiz-master-plugin-${grid.name}`,
+                    )}
+
+                    <h4>Passo 5: Impostazioni Finali</h4>
+                    <p>Nei campi che richiedono abilitazione dinamica, imposta la classe CSS <code>abi-NOME_ABILITAZIONE</code> nell'<strong>Appearence CSS Class</strong> (es. <code>abi-${grid.name}cTipLim</code>).</p>
+                `;
           return html;
         },
       },
       {
-        id: 'sub_6_3',
-        title: 'Page Load',
-        description: 'Gestione abilitazione grid MASTER (SOLO SE GRID MASTER)',
+        id: 'sub_6_detail_inherited',
+        title: 'Scenario: Detail (Ereditato)',
+        description: 'Grid di dettaglio le cui abilitazioni sono interamente gestite dal master.',
         content: (grid) => {
-          let html = `Creare un'azione di tipo javascript per abilitare/disabilitare l'insert sul MASTER`;
-          html += renderCodeBlock(
-            `let f_abi_ins_${grid.name.toLowerCase()} = $v("Pxxx_F_ABI_INS_${grid.name}") == 'true' ? true : false;
+          let html = `
+                    <p>Questo scenario si applica quando le azioni di Inserimento, Modifica e Cancellazione sulla grid di dettaglio sono permesse o negate in base alla riga selezionata nella grid master.</p>
+                    <h4>Passo 1: Query della Grid</h4>
+                    <p>Aggiungi alla query della grid la colonna <code>ID_ROW_ABI</code> per identificare univocamente l'abilitazione riga.</p>
+                    ${renderCodeBlock(`:Pxxxx_ID_ROW_ABI_MASTER ID_ROW_ABI`, `wiz-master-query-${grid.name}`)}
 
-cmsAbiInsert ("${grid.name}", f_abi_ins_${grid.name.toLowerCase()});
-`,
-            `wiz-pageload-${grid.name}`,
-            'javascript',
-          );
+                    <h4>Passo 2: Plugin Abilitazioni</h4>
+                    <p>Nel Page Load, aggiungi una Dynamic Action che esegue il plugin "IG Lazy Permission".</p>
+                    <ul>
+                        <li><strong>Selection Type:</strong> Region</li>
+                        <li><strong>Region:</strong> ${grid.name}</li>
+                        <li><strong>PL/SQL Logic:</strong> (lasciare vuoto)</li>
+                        <li><strong>ID Abilitazione:</strong> ID_ROW_ABI</li>
+                        <li><strong>Items to Submit:</strong> (lasciare vuoto)</li>
+                        <li><strong>Gestione Record:</strong> NO</li>
+                        <li><strong>Mater Region:</strong> static_ID del Master</li>
+                    </ul>
+                    <p><strong>Nota:</strong> Questo funziona se il plugin della grid master (vedi Scenario 1) popola correttamente le abilitazioni. Assicurarsi di aver aggiunto nel master la gestione di questo detail.</p>
+
+                    <h4>Passo 3: Impostazioni Finali</h4>
+                    <p>Nei campi che richiedono abilitazione dinamica, imposta la classe CSS <code>abi-NOME_ABILITAZIONE</code> nell'<strong>Appearence CSS Class</strong> (es. <code>abi-${grid.name}cTipLim</code>).</p>
+                `;
           return html;
         },
       },
       {
-        id: 'sub_6_4',
-        title: 'Query',
-        description: 'Gestione WhenNewRecordInstance nella Query del grid',
+        id: 'sub_6_detail_calculated',
+        title: 'Scenario: Detail (Calcolato)',
+        description: 'Grid di dettaglio con abilitazioni autonome.',
         content: (grid) => {
-          let html = `All'interno della query del grid è necessario aggiungere due campi: <strong>ID_ROW_ABI</strong> (necessario per recuperare successivamente le abilitazioni) e <strong>F_ABI_UD</strong> (per calcolare e impostare l'abilitazione di Update/Delete del record)`;
-          html += renderCodeBlock(
-            `TXXX.COL1||';'||To_Char(TXXX.COL2,'ddmmyyyy') ID_ROW_ABI,
+          let html = `
+                    <p>Questo scenario è per grid di dettaglio che hanno una logica di abilitazione derivante anche da condizioni del detail</p>
+                    <h4>Passo 1: Query della Grid</h4>
+                    <p>Aggiungi alla query della grid la colonna <code>ID_ROW_ABI</code>.</p>
+                    ${renderCodeBlock(`TXXX.COL1||';'||To_Char(TXXX.COL2,'ddmmyyyy') ID_ROW_ABI`, `wiz-calc-query-${grid.name}`)}
 
-KX003_ABI_UTL_APEX.F_GET_ABI(v('APP_PAGE_ID'),:P_C_VAR,'WNRI',TXXX.COL1||';'||To_Char(TXXX.COL2,'ddmmyyyy'), '${grid.name}',null,'UD') F_ABI_UD`,
-            `wiz-wnriqry-${grid.name}`,
-          );
+                    <h4>Passo 2: Plugin Abilitazioni</h4>
+                    <p>Configura il plugin "IG Lazy Permission" con una logica PL/SQL personalizzata.</p>
+                    <ul>
+                        <li><strong>Selection Type:</strong> Region</li>
+                        <li><strong>Region:</strong> ${grid.name}</li>
+                        <li><strong>PL/SQL Logic:</strong> vedi sotto </li>
+                        <li><strong>ID Abilitazione:</strong> ID_ROW_ABI</li>
+                        <li><strong>Items to Submit:</strong> Inserisci i Page Item necessari (es. Pxxxx_C_VAR).</li>
+                        <li><strong>Gestione Record:</strong> SI</li>
+                        <li><strong>Mater Region:</strong> (lasciare vuoto)</li>
+                    </ul>
+                    ${renderCodeBlock(
+                      `DECLARE
+    v_t_upd        varchar2(2);
+    v_pk_val       varchar2(4000) := :PK_VALUE; 
+    v_detail varchar2(100):=''; --Static ID region Detail da gestire
+BEGIN
+    v_t_upd := KX003_ABI_UTL_APEX.F_GET_ABI(v('APP_PAGE_ID'),v('Pxxxx_C_VAR'),'WNRI', v_pk_val ,:REGION_STATIC_ID,null,'UD');
+    :PERMS_JSON := KX003_ABI_UTL_APEX.F_GET_ABI_JSON(v('APP_PAGE_ID'),v('Pxxxx_C_VAR'),:REGION_STATIC_ID, v_t_upd, v_pk_val,v_detail);
+END;`,
+                      `wiz-calc-plugin-${grid.name}`,
+                    )}
+
+                    <h4>Passo 3: Impostazioni Finali</h4>
+                    <p>Nei campi che richiedono abilitazione dinamica, imposta la classe CSS <code>abi-NOME_ABILITAZIONE</code> nell'<strong>Appearence CSS Class</strong> (es. <code>abi-${grid.name}cTipLim</code>).</p>
+                `;
           return html;
         },
       },
       {
-        id: 'sub_6_5',
-        title: 'Impostazioni Abilitazioni',
-        description: "Attivazione dell'abilitazione",
-        notaBene: `Ricercare abilitazioni per il nome della colonna cosi come era scritta su JBWT, esempio xxxxdIniVal`,
+        id: 'sub_6_final',
+        title: 'Censimento e Test',
+        description: 'Censisci le nuove procedure e testa le abilitazioni.',
         content: (grid) => {
-          let html = `<ul style="margin-left: 20px; margin-top: 5px;" class="text-sm">
-                    <li>Nell'impostazioni del grid, definire la colonna F_ABI_${grid.name} in Attributes - Allowed Row Operations Column</li>
-                    <li>Abilitazioni fields, nel Read Only di ogni campo impostare:</li>
-                    <ul class="list-disc pl-5 mt-1" style="margin-left: 20px;"> 
-                            <li><strong>Type:</strong> Expression</li>
-                            <li><strong>Language:</strong> PL/SQL</li>
-                            <li><strong>PL/SQL Expression:</strong></li>
-                        </ul>`;
-          html += renderCodeBlock(`KX003_ABI_UTL_APEX.F_ABI_ITM (v('APP_PAGE_ID'),:Pxxx_C_VAR,'${grid.name}','${grid.name}dIniVal','updateallowed',:ID_ROW_ABI ) = 'false'`, `wiz-abiitm1-${grid.name}`);
-          html += `<li>Abilitazioni insert detail, nella DA Selection Change del grid: </li>
-                    <ul class="list-disc pl-5 mt-1" style="margin-left: 20px;"> 
-                            <li>Azione PLSQL per recuperare il valore dell'abilitazione e appoggiarlo su un Page Item:</li>`;
-          html += renderCodeBlock(`Pxxx_F_ABI_INS_detail := KX003_ABI_UTL_APEX.F_ABI_REG (v('APP_PAGE_ID'),:Pxxx_C_VAR,'<STATIC ID REGION DETAIL>','insertallowed',:ID_ROW_ABI )`, `wiz-abiitm2-${grid.name}`);
-          html += `<li>Azione Javascript per impostare l'abilitazione:</li>`;
-          html += renderCodeBlock(
-            `let f_abi_ins_detail = $v("Pxxx_F_ABI_INS_detail") == 'true' ? true : false;
-
-cmsAbiInsert ("<STATIC ID REGION DETAIL>", f_abi_ins_detail);
-`,
-            `wiz-abiitm3-${grid.name}`,
-            'javascript',
-          );
-
-          html += `</ul></ul>`;
-          return html;
-        },
-      },
-      {
-        id: 'sub_6_6',
-        title: 'Censimento procedure di abilitazione',
-        description: 'Censire ogni controllo WNFI e WNRI creato',
-        content: (grid) => {
-          let html = `<ul style="margin-left: 20px; margin-top: 5px;" class="text-sm">
-                    <li>Censimento Controllo</li>
-                    `;
-          html += renderCodeBlock(
-            `insert into TX006_TYP_ABI(page_id, c_reg, c_ctr, t_ctr, t_exe, f_chg_ses, n_min_cache) values(<ID PAGE>, <STATIC ID REGION>, 'WNRI', 'WhenNewRecordInstance', 'KXXX_ABI_XXXXX.P_WNRI_XXXX(@P_N_PAG_ID@,@P_C_VAR@,@P1_V@,@P2_D@,@P3_N@)', 'N', 60);`,
-            `wiz-cens1-${grid.name}`,
-          );
-          html += `<li>Effettuare Test delle abilitazioni, per fare debug direttamente da PLSQL è possibile effettuare il seguente script per autenticarsi su DB, lanciare le singole procedure e interrogare le TX004_ABI_EXE e TX005_ABI per vedere il risultato</li>`;
-          html += renderCodeBlock(
-            `DECLARE
+          let html = `
+                    <h4>Passo 1: Censimento Controllo</h4>
+                    <p>Censisci ogni nuovo controllo WNRI creato nella tabella <code>TX006_TYP_ABI</code>.</p>
+                    ${renderCodeBlock(`insert into TX006_TYP_ABI(page_id, c_reg, c_ctr, t_ctr, t_exe, f_chg_ses, n_min_cache) values(<ID PAGE>, <STATIC ID REGION>, 'WNRI', 'WhenNewRecordInstance', 'KXXX_ABI_XXXXX.P_WNRI_XXXX(@P_N_PAG_ID@,@P_C_VAR@,@P1_V@,@P2_D@,@P3_N@)', 'N', 60);`, `wiz-cens1-${grid.name}`)}
+                    
+                    <h4>Passo 2: Debug e Test</h4>
+                    <p>Per fare debug direttamente da PL/SQL, puoi usare lo script seguente per impostare la sessione APEX e interrogare le tabelle di risultato <code>TX004_ABI_EXE</code> e <code>TX005_ABI</code>.</p>
+                    ${renderCodeBlock(
+                      `DECLARE
     v_session_id VARCHAR2(100);
+BEGIN
+    APEX_UTIL.SET_SECURITY_GROUP_ID(p_security_group_id => APEX_UTIL.FIND_SECURITY_GROUP_ID('CMS'));
 
-    BEGIN
-        APEX_UTIL.SET_SECURITY_GROUP_ID(p_security_group_id => APEX_UTIL.FIND_SECURITY_GROUP_ID('CMS'));
-
-        APEX_CUSTOM_AUTH.LOGIN(
+    APEX_CUSTOM_AUTH.LOGIN(
         p_uname       => 'codice_utente',
         p_session_id  => V('APP_SESSION'),
-        p_app_page    => '123'||':1234'); -- APP ID + ':PAGE_ID'
+        p_app_page    => 'APP_ID' || ':' || 'PAGE_ID');
 
-        /* INTERROGARE IL RISULTATO DELLE ABILITAZIONI NELLE TABELLE:
-        TX004_ABI_EXE
-        TX005_ABI
-        */
-    END ;`,
-            `wiz-cens2-${grid.name}`,
-          );
-          html += `</ul>`;
+    -- Esegui qui le tue procedure di test...
+
+    -- Interroga il risultato nelle tabelle:
+    -- SELECT * FROM TX004_ABI_EXE WHERE ...
+    -- SELECT * FROM TX005_ABI WHERE ...
+END;`,
+                      `wiz-cens2-${grid.name}`,
+                    )}
+                `;
           return html;
         },
       },
@@ -586,7 +627,7 @@ cmsAbiInsert ("<STATIC ID REGION DETAIL>", f_abi_ins_detail);
         title: 'Esegui i test sulla Grid',
         description: 'Esegui ogni singolo test per accertarsi dello sviluppo',
         content: (grid) => {
-          let html = '<p class="text-gray">Scarica il file dei test ed esegui quelli relativi alla grid<strong> ' + grid.name + '</strong></p>';
+          let html = '<p class="text-gray">Scarica il file dei test ed esegui quelli relativi alla grid<strong> ' + grid.name + '</strong></p><p class="text-gray"><strong>NOTA BENE:</strong> Al termine dei test commenta TUTTI i log js e PLSQL</p>';
           return html;
         },
       },

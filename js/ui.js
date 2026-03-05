@@ -722,8 +722,8 @@ window.showLovDetails = function (gridName, itemName, type) {
 
   const notaBeneHtml = `
     <div class="description-box" style="margin-bottom: 20px; background: #fffbeb; border-color: #f59e0b;">
-        <p class="text-sm">Se le LOV sono gestite sia sulla descrizione che sul codice, rioportare un unico campo su Apex in cui mostrare la concatenazione.</p>
-        <p class="text-sm">Aggiungere una colonna display con la concatenazione del "codice - descrizione."</p>
+        <p class="text-sm">Se le LOV sono gestite sia sulla descrizione che sul codice, rioportare un campo su Apex in cui mostrare il codice.</p>
+        <p class="text-sm">Aggiungere una colonna in query del grid in cui decodificare la descrizione, indipendentemente dalla business logic. Sulla colonna della descrizione impostare la classe <strong>"custom-readonly"</strong> e <strong>Query Only a "S"</strong></p>
         <p class="text-sm">Quando si filtra le lov si deve fare in questo modo:
         <ul style="margin-left: 20px; margin-top: 5px;" class="text-sm">
           <li>se page item --> CODICE = :PAGE_ITEM</li>
