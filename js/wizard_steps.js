@@ -110,8 +110,12 @@ const wizardSteps = [
           grid.fields.forEach((f) => {
             let notes = [];
             if (f.isMandatory === 'true') notes.push('<span class="badge badge-red">Required</span>');
-            if (f.isHidden === 'true') notes.push('<span class="badge badge-gray">Hidden</span>');
-            if (f.isEditable === 'false') notes.push('<span class="badge badge-yellow">Read Only</span>');
+            if (f.isHidden === 'true') {
+              notes.push('<span class="badge badge-gray">Hidden</span>');
+            } else {
+              if (f.isEditable === 'false') notes.push('<span class="badge badge-yellow">custom-readonly</span>');
+            }
+
             if (f.length) notes.push(`Max Length: <strong>${f.length}</strong>`);
 
             if (f.tag === 'checkbox') {
@@ -454,7 +458,7 @@ const wizardSteps = [
                         <li><strong>PL/SQL Logic:</strong> Vedi sotto </li>
                         <li><strong>ID Abilitazione:</strong> ID_ROW_ABI</li>
                         <li><strong>Items to Submit:</strong> Inserisci i Page Item necessari (es. Pxxxx_C_VAR).</li>
-                        <li><strong>Gestione Record:</strong> SI</li>
+                        <li><strong>Gestione Record:</strong> SI, nel caso in cui sono calcolate, altrimenti NO se gestite tramite le Allowed Operations </li>
                         <li><strong>Mater Region:</strong> (lasciare vuoto)</li>
                     </ul>
                     ${renderCodeBlock(
@@ -530,7 +534,7 @@ END;`,
                         <li><strong>PL/SQL Logic:</strong> vedi sotto </li>
                         <li><strong>ID Abilitazione:</strong> ID_ROW_ABI</li>
                         <li><strong>Items to Submit:</strong> Inserisci i Page Item necessari (es. Pxxxx_C_VAR).</li>
-                        <li><strong>Gestione Record:</strong> SI</li>
+                        <li><strong>Gestione Record:</strong> SI, nel caso in cui sono calcolate, altrimenti NO se gestite tramite le Allowed Operations</li>
                         <li><strong>Mater Region:</strong> (lasciare vuoto)</li>
                     </ul>
                     ${renderCodeBlock(
