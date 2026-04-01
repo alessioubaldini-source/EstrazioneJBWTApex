@@ -160,7 +160,7 @@ const wizardSteps = [
   },
   {
     id: 'step_3',
-    title: 'Step 3: Button (DA FARE)',
+    title: 'Step 3: Button',
     substeps: [
       {
         id: 'sub_3_1',
@@ -186,6 +186,38 @@ const wizardSteps = [
             }
             html += `</div>`;
           });
+          return html;
+        },
+      },
+      {
+        id: 'sub_3_2',
+        title: 'Dipendenze Maschere',
+        description: 'Verifica se la maschera corrente deve essere richiamata da altre maschere configurate.',
+        content: (grid) => {
+          const currentForm = currentFilename.replace(/\.xml$/i, '').toUpperCase();
+          const deps = appSettings.dependencies || {};
+          const callers = [];
+
+          for (const [caller, calledList] of Object.entries(deps)) {
+            const isCalled = Array.isArray(calledList) && calledList.some((f) => f.toUpperCase() === currentForm);
+
+            if (isCalled) {
+              callers.push(caller);
+            }
+          }
+
+          if (callers.length === 0) {
+            return '<p class="text-gray">Nessuna maschera chiamante configurata per questo modulo nelle impostazioni.</p>';
+          }
+
+          let html = '<div class="description-box" style="background: #f0fdf4; border-color: #22c55e;">';
+          html += `<h4 style="color: #166534; font-weight:bold; margin-bottom:8px;">⚠️ Azione su Maschera Chiamante</h4>`;
+          html += `<p class="text-sm">La maschera corrente (<strong>${currentForm}</strong>) risulta essere richiamata dalle seguenti maschere:</p>`;
+          html += '<ul style="margin-left: 20px; margin-top: 10px;" class="text-sm">';
+          callers.forEach((c) => (html += `<li><strong>${c}</strong></li>`));
+          html += '</ul>';
+          html += '<p class="text-sm" style="margin-top: 12px;"><strong>Istruzioni:</strong> Ricordati di aggiungere il pulsante o il link di apertura su APEX nelle maschere sopra elencate.</p>';
+          html += '</div>';
           return html;
         },
       },

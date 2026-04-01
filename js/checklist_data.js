@@ -8,6 +8,7 @@ const checklist = [
       { id: 'A4', name: 'Title', label: 'la descrizione della maschera: Abbinamento Cluster' },
       { id: 'A5', name: 'Page Mode', label: 'nel caso in cui sia una maschera normale (non aperta versione popup): Normal altrimenti Modal Dialog' },
       { id: 'A6', name: 'Page Template', label: 'Theme Default' },
+      { id: 'A7', name: 'Chiamata da Maschera', label: 'Verificare che il pulsante di apertura su maschera chiamante sia configurato correttamente' },
     ],
   },
   {

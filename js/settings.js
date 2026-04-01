@@ -1,13 +1,15 @@
 let appSettings = {
   ranges: [],
   messages: {},
+  dependencies: {},
 };
 
 function loadSettings() {
   try {
     const saved = localStorage.getItem('JBWT_APP_SETTINGS');
     if (saved) {
-      appSettings = JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      appSettings = { ...appSettings, ...parsed };
     }
   } catch (e) {
     console.error('Errore caricamento settings:', e);
@@ -15,9 +17,16 @@ function loadSettings() {
 }
 
 function openSettings() {
-  document.getElementById('settingsRanges').value = JSON.stringify(appSettings.ranges || [], null, 2);
-  document.getElementById('settingsMessages').value = JSON.stringify(appSettings.messages || {}, null, 2);
-  document.getElementById('settingsApex').value = JSON.stringify(appSettings.apex || {}, null, 2);
+  const elRanges = document.getElementById('settingsRanges');
+  const elMsgs = document.getElementById('settingsMessages');
+  const elApex = document.getElementById('settingsApex');
+  const elDeps = document.getElementById('settingsDependencies');
+
+  if (elRanges) elRanges.value = JSON.stringify(appSettings.ranges || [], null, 2);
+  if (elMsgs) elMsgs.value = JSON.stringify(appSettings.messages || {}, null, 2);
+  if (elApex) elApex.value = JSON.stringify(appSettings.apex || {}, null, 2);
+  if (elDeps) elDeps.value = JSON.stringify(appSettings.dependencies || {}, null, 2);
+
   document.getElementById('settingsModal').classList.add('open');
 }
 
@@ -27,13 +36,15 @@ function closeSettings() {
 
 function saveSettings() {
   try {
-    const rangesStr = document.getElementById('settingsRanges').value;
-    const messagesStr = document.getElementById('settingsMessages').value;
-    const apexStr = document.getElementById('settingsApex').value;
+    const elRanges = document.getElementById('settingsRanges');
+    const elMsgs = document.getElementById('settingsMessages');
+    const elApex = document.getElementById('settingsApex');
+    const elDeps = document.getElementById('settingsDependencies');
 
-    appSettings.ranges = rangesStr ? JSON.parse(rangesStr) : [];
-    appSettings.messages = messagesStr ? JSON.parse(messagesStr) : {};
-    appSettings.apex = apexStr ? JSON.parse(apexStr) : {};
+    if (elRanges) appSettings.ranges = elRanges.value ? JSON.parse(elRanges.value) : [];
+    if (elMsgs) appSettings.messages = elMsgs.value ? JSON.parse(elMsgs.value) : {};
+    if (elApex) appSettings.apex = elApex.value ? JSON.parse(elApex.value) : {};
+    if (elDeps) appSettings.dependencies = elDeps.value ? JSON.parse(elDeps.value) : {};
 
     localStorage.setItem('JBWT_APP_SETTINGS', JSON.stringify(appSettings));
     closeSettings();
