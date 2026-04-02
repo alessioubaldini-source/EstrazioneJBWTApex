@@ -636,12 +636,21 @@ function renderSection(title, key, count, content) {
 }
 
 function renderEventBlock(evt, gridIdx, uniqueSuffix) {
+  let noteHtml = '';
+  if (evt.name.toLowerCase().includes('whenfinishedit')) {
+    noteHtml = `
+      <div class="mt-2 p-2 text-xs" style="background-color: #fff7ed; border-left: 3px solid #f97316; color: #9a3412; border-radius: 0 4px 4px 0;">
+        <strong>💡 ATTENZIONE:</strong> Questo controllo deve scattare solo alla modifica del field, pertanto deve essere gestito il corrispettivo OLD per verificare la variazione
+      </div>`;
+  }
+
   return `
       <div class="mb-3" style="border-left: 3px solid #6366f1; padding-left: 12px;">
           <h4 class="info-label mb-1 text-indigo-700">${evt.name} ${evt.context ? `<span class="text-xs text-gray" style="font-weight:normal;">(Field: ${evt.context})</span>` : ''}</h4>
           ${evt.waitingWindow ? `<span class="badge badge-yellow text-xs mb-2">Waiting Window</span>` : ''}
           <p class="text-xs mb-2 mt-1"><span class="info-label">Action Refs:</span> ${evt.actionRefs.join(', ') || 'Nessuna'}</p>
           ${renderGroovyScripts(evt.groovyScripts, `evt-${gridIdx}-${uniqueSuffix}`)}
+          ${noteHtml}
       </div>
   `;
 }
@@ -707,6 +716,20 @@ function renderGroovyScripts(scripts, prefix) {
                     `;
                   }
                   if (item.type === 'paramsList') {
+                    let callFormHelp = '';
+                    if (item.classType === 'CallFormAction' || item.className === 'CallFormAction') {
+                      callFormHelp = `
+                        <div class="mt-2 p-2" style="background-color: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 0 4px 4px 0;">
+                            <p class="text-xs font-bold mb-1" style="color: #0369a1;">💡 Modalità di chiamata in APEX:</p>
+                            <div style="font-family: monospace; font-size: 11px; color: #0c4a6e;">
+                                <div class="mb-1"><strong>// Caso 1: Navigazione base alla pagina 10 con parametri</strong></div>
+                                <div class="mb-2">ApexUtils.callForm(10, { P10_ID: 50, P10_MODE: 'EDIT' });</div>
+                                <div class="mb-1"><strong>// Caso 2: popup o apertura su stessa pagina</strong></div>
+                                <div>ApexUtils.callForm(102, { P102_MASTER: 1 }, { mode: 'same' });</div>
+                            </div>
+                        </div>
+                      `;
+                    }
                     return `
                       <div class="mb-2">
                           <p class="text-xs text-gray mb-1">Class: ${item.className} ${item.classType ? `(${item.classType})` : ''}</p>
@@ -729,6 +752,7 @@ function renderGroovyScripts(scripts, prefix) {
                                    </div>`
                               : ''
                           }
+                          ${callFormHelp}
                       </div>
                     `;
                   }
