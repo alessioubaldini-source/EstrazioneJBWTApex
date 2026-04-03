@@ -1,25 +1,30 @@
+// Helper per applicare lo stile bold (funziona se la libreria supporta lo styling, es. xlsx-js-style)
+const setBoldHeaders = (ws) => {
+  if (!ws || !ws['!ref']) return;
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    const firstCell = ws[XLSX.utils.encode_cell({ r: R, c: 0 })];
+    if (!firstCell || !firstCell.v) continue;
+
+    const val = String(firstCell.v);
+    // Applica bold se: riga 0 (header tabella), oppure testo tutto maiuscolo (titolo sezione),
+    // oppure se inizia con parole chiave di intestazione note.
+    if (R === 0 || val === val.toUpperCase() || ['Name', 'Type', 'Operation', 'Event Name', 'Problema'].includes(val)) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[cellRef]) continue;
+        if (!ws[cellRef].s) ws[cellRef].s = {};
+        ws[cellRef].s.font = { bold: true };
+      }
+    }
+  }
+};
+
 // Funzione Export Excel
 function downloadExcel() {
   if (!currentData) return;
 
   const wb = XLSX.utils.book_new();
-
-  // Helper per applicare lo stile bold (funziona se la libreria supporta lo styling)
-  const setBoldHeaders = (ws, data) => {
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    for (let R = range.s.r; R <= range.e.r; ++R) {
-      // Applica bold se la riga sembra un header (tutto maiuscolo o prima riga di sezione)
-      const firstCell = ws[XLSX.utils.encode_cell({ r: R, c: 0 })];
-      if (firstCell && firstCell.v && typeof firstCell.v === 'string' && (firstCell.v === firstCell.v.toUpperCase() || data[R][0] === 'Name' || data[R][0] === 'Type')) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
-          if (!ws[cellRef]) continue;
-          if (!ws[cellRef].s) ws[cellRef].s = {};
-          ws[cellRef].s.font = { bold: true };
-        }
-      }
-    }
-  };
 
   // 1. Foglio WNFI (When New Form Instance)
   if (currentData.whenNewFormInstance.length > 0 || (currentData.formParams && currentData.formParams.length > 0)) {
@@ -346,7 +351,7 @@ function downloadExcel() {
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
 
-    setBoldHeaders(ws, rows); // Imposta larghezza colonne
+    setBoldHeaders(ws);
     ws['!cols'] = [{ wch: 20 }, { wch: 30 }, { wch: 50 }, { wch: 30 }, { wch: 40 }, { wch: 30 }, { wch: 50 }];
 
     // Nome foglio (max 31 caratteri e univoco)
@@ -376,7 +381,7 @@ function downloadTestCases() {
   const rows = [];
 
   // Intestazioni
-  const headers = ['ID', 'Area/Grid', 'Oggetto', 'Tipo Test', 'Descrizione Scenario', 'Risultato Atteso', 'Priorità', 'Codice Riferimento', 'Esito (OK/KO)'];
+  const headers = ['ID', 'Area/Grid', 'Oggetto', 'Tipo Test', 'Test', 'Risultato Atteso', 'Priorità', 'Codice Riferimento', 'Esito (OK/KO)', 'Note'];
   rows.push(headers);
 
   let testId = 1;
@@ -526,12 +531,7 @@ function downloadTestCases() {
   ];
 
   // Applica grassetto all'header
-  const range = XLSX.utils.decode_range(ws['!ref']);
-  for (let C = range.s.c; C <= range.e.c; ++C) {
-    const cellRef = XLSX.utils.encode_cell({ r: 0, c: C });
-    if (!ws[cellRef].s) ws[cellRef].s = {};
-    ws[cellRef].s.font = { bold: true };
-  }
+  setBoldHeaders(ws);
 
   XLSX.utils.book_append_sheet(wb, ws, 'Test Plan');
 
@@ -551,16 +551,7 @@ function downloadTestCases() {
   ];
 
   // Applica grassetto all'header
-  const rangeAdvice = XLSX.utils.decode_range(wsAdvice['!ref']);
-  for (let R = rangeAdvice.s.r; R <= Math.min(rangeAdvice.e.r, 2); ++R) {
-    for (let C = rangeAdvice.s.c; C <= rangeAdvice.e.c; ++C) {
-      const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
-      if (wsAdvice[cellRef]) {
-        if (!wsAdvice[cellRef].s) wsAdvice[cellRef].s = {};
-        wsAdvice[cellRef].s.font = { bold: true };
-      }
-    }
-  }
+  setBoldHeaders(wsAdvice);
 
   XLSX.utils.book_append_sheet(wb, wsAdvice, 'Consigli');
 
