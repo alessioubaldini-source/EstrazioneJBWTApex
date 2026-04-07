@@ -564,7 +564,7 @@ function downloadTestCases() {
   const rows = [];
 
   // Intestazioni
-  const headers = ['ID', 'Area/Grid', 'Oggetto', 'Tipo Test', 'Test', 'Risultato Atteso', 'Priorità', 'Codice Riferimento', 'Esito (OK/KO)', 'Note'];
+  const headers = ['ID', 'Area/Grid', 'Oggetto', 'Tipo Test', 'Test', 'Risultato Atteso', 'Priorità', 'Codice Riferimento', 'Esito (OK/KO)', 'Note', 'Esito (OK/KO) post correzione'];
   rows.push(headers);
 
   let testId = 1;
