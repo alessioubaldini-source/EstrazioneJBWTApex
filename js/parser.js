@@ -210,6 +210,7 @@ function parseXML(xmlText) {
         length: field.getAttribute('length'),
         isMandatory: field.getAttribute('ismandatory'),
         isEditable: field.getAttribute('iseditable'),
+        updateAllowed: field.getAttribute('updateAllowed'),
         isHidden: field.getAttribute('ishidden'),
         order: field.getAttribute('order'),
         horder: field.getAttribute('horder'),

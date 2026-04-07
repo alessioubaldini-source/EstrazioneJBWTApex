@@ -647,28 +647,27 @@ function downloadTestCases() {
 
       const fieldName = field.label || field.name;
 
-      // Obbligatorietà
-      if (field.isEditable !== 'false' && field.isMandatory === 'true' && (grid.insertAllowed === 'true' || grid.updateAllowed === 'true')) {
-        const p = tpl(TEST_TEMPLATES.GRID.FIELD_MANDATORY, fieldName);
-        addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
-      }
-
-      // Lunghezza
-      if (field.isEditable !== 'false' && field.length && parseInt(field.length) > 0) {
-        const p = tpl(TEST_TEMPLATES.GRID.FIELD_LENGTH, fieldName, field.length);
-        addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
-      }
-
       // Editabilità (testiamo il readonly puntuale solo se la grid in generale permette l'update)
-      if (grid.updateAllowed === 'true' && field.isEditable === 'false') {
+      if (grid.updateAllowed === 'true' && (field.isEditable === 'false' || field.updateAllowed === 'false')) {
         const p = tpl(TEST_TEMPLATES.GRID.FIELD_READONLY, fieldName);
         addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
-      }
+      } else {
+        // Obbligatorietà
+        if (field.isEditable !== 'false' && field.isMandatory === 'true' && (grid.insertAllowed === 'true' || grid.updateAllowed === 'true')) {
+          const p = tpl(TEST_TEMPLATES.GRID.FIELD_MANDATORY, fieldName);
+          addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
+        }
+        // Lunghezza
+        if (grid.updateAllowed === 'true' && (field.isEditable === 'true' || field.updateAllowed === 'true') && field.length && parseInt(field.length) > 0) {
+          const p = tpl(TEST_TEMPLATES.GRID.FIELD_LENGTH, fieldName, field.length);
+          addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
+        }
 
-      // ValidRegex
-      if (field.isEditable !== 'false' && field.validRegex) {
-        const p = tpl(TEST_TEMPLATES.GRID.FIELD_REGEX, fieldName, field.validRegex.regex, field.validRegex.message || 'Errore validazione');
-        addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
+        // ValidRegex
+        if (field.isEditable !== 'false' && field.validRegex) {
+          const p = tpl(TEST_TEMPLATES.GRID.FIELD_REGEX, fieldName, field.validRegex.regex, field.validRegex.message || 'Errore validazione');
+          addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
+        }
       }
     });
 
