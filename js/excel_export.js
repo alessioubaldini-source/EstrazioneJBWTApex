@@ -90,7 +90,7 @@ const TEST_TEMPLATES = {
     LOGIC_BEFORE_COMMIT: {
       OBJ: 'Controlli al Salvataggio',
       TYPE: 'Business Logic',
-      SCENARIO: 'Creare le condizioni di dati che violano la regola "{0}" e procedere al salvataggio',
+      SCENARIO: 'Creare le condizioni di dati che violano la regola e procedere al salvataggio',
       EXPECTED: 'Il salvataggio viene bloccato e viene mostrato il messaggio: "{2}"; i dati non vengono salvati',
       PRIO: 'Alta',
     },
