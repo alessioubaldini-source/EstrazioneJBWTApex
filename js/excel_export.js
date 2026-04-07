@@ -6,28 +6,28 @@ const TEST_TEMPLATES = {
       TYPE: 'Inizializzazione',
       SCENARIO: 'Aprire la form e verificare il completamento del caricamento iniziale: assenza di errori JS, esecuzione degli script WNFI e popolamento dei campi/grid iniziali',
       EXPECTED: 'La form si carica correttamente: nessun errore in console, tutti gli script WNFI sono eseguiti, i campi con valori di default risultano già valorizzati e le grid iniziali sono popolate',
-      PRIO: 'Media',
+      PRIO: 'Programmatore e Analista',
     },
     PARAM_RESET: {
       OBJ: 'Parametri Form',
       TYPE: 'Stato',
       SCENARIO: 'Verificare il ripristino/stato iniziale, premendo il Reset dei Filtri (se presenti) e il reimposta dei grid',
       EXPECTED: 'I parametri assumono i valori di default previsti e si comportano correttamente come in fase di apertura',
-      PRIO: 'Bassa',
+      PRIO: 'Programmatore',
     },
     PAGE_NAME: {
       OBJ: 'Nome Pagina (Tab)',
       TYPE: 'UI / Standard',
       SCENARIO: 'Verificare che il titolo della pagina visualizzato nel tab del browser sia corretto',
       EXPECTED: 'Il titolo corrisponde alla descrizione della maschera ed è conforme agli standard',
-      PRIO: 'Bassa',
+      PRIO: 'Programmatore',
     },
     MASK_ALIAS: {
       OBJ: 'Alias Maschera: {0}',
       TYPE: 'Configurazione / jBWT',
       SCENARIO: "Verificare che l'alias della pagina sia impostato correttamente per permettere la chiamata da jBWT",
       EXPECTED: 'L\'alias "{0}" è configurato; la maschera è raggiungibile',
-      PRIO: 'Alta',
+      PRIO: 'Programmatore',
     },
   },
   GRID: {
@@ -36,63 +36,63 @@ const TEST_TEMPLATES = {
       TYPE: 'Permessi / Funzionalità',
       SCENARIO: 'Compilare tutti i campi obbligatori e cliccare Salva per inserire un nuovo record',
       EXPECTED: 'Il record viene salvato correttamente; la riga appare nella grid con i dati inseriti; nessun messaggio di errore',
-      PRIO: 'Media',
+      PRIO: 'Programmatore',
     },
     INSERT_KO: {
       OBJ: 'Grid – Inserimento Bloccato',
       TYPE: 'Permessi',
       SCENARIO: 'Verificare che il pulsante di inserimento non sia presente o sia disabilitato nella toolbar della grid',
       EXPECTED: `Il pulsante di inserimento è assente; non è possibile aggiungere nuovi record dall'utente corrente`,
-      PRIO: 'Bassa',
+      PRIO: 'Programmatore',
     },
     UPDATE_OK: {
       OBJ: 'Grid – Modifica Record',
       TYPE: 'Permessi / Funzionalità',
       SCENARIO: 'Selezionare un record esistente, modificare almeno un campo editabile e salvare',
       EXPECTED: 'La modifica viene salvata correttamente; i valori aggiornati sono visibili nella grid; nessun errore di validazione o di permesso',
-      PRIO: 'Media',
+      PRIO: 'Programmatore',
     },
     UPDATE_KO: {
       OBJ: 'Grid – Modifica Bloccata',
       TYPE: 'Permessi',
       SCENARIO: 'Tentare di modificare un campo nella grid; verificare che tutti i campi risultino in sola lettura',
       EXPECTED: 'I campi sono non modificabili; il pulsante Salva è assente o disabilitato; nessuna modifica può essere apportata',
-      PRIO: 'Bassa',
+      PRIO: 'Programmatore',
     },
     DELETE_OK: {
       OBJ: 'Grid – Cancellazione Record',
       TYPE: 'Permessi / Funzionalità',
       SCENARIO: 'Selezionare un record non referenziato da altri dati e procedere con la cancellazione',
       EXPECTED: 'Il record viene eliminato; scompare dalla grid dopo il salvataggio; nessun errore di integrità referenziale',
-      PRIO: 'Media',
+      PRIO: 'Programmatore',
     },
     DELETE_KO: {
       OBJ: 'Grid – Cancellazione Bloccata',
       TYPE: 'Permessi',
       SCENARIO: 'Verificare che il pulsante di cancellazione non sia presente o sia disabilitato nella toolbar della grid',
       EXPECTED: 'Il pulsante di cancellazione è assente; non è possibile eliminare record',
-      PRIO: 'Bassa',
+      PRIO: 'Programmatore',
     },
     FIELD_MANDATORY: {
       OBJ: 'Campo obbligatorio: {0}',
       TYPE: 'Validazione',
       SCENARIO: 'Lasciare vuoto il campo "{0}", compilare tutti gli altri campi obbligatori e tentare il salvataggio',
       EXPECTED: 'Il sistema blocca il salvataggio e segnala con errore che il campo "{0}" è obbligatorio',
-      PRIO: 'Alta',
+      PRIO: 'Programmatore',
     },
     FIELD_LENGTH: {
       OBJ: 'Lunghezza max: {0}',
       TYPE: 'Input / Validazione',
       SCENARIO: 'Nel campo "{0}" inserire una stringa maggiore di {1} caratteri',
       EXPECTED: `Il sistema impedisce il salvataggio`,
-      PRIO: 'Bassa',
+      PRIO: 'Programmatore',
     },
     FIELD_READONLY: {
       OBJ: 'Campo sola lettura: {0}',
       TYPE: 'UI / Permessi',
       SCENARIO: 'Tentare di modificare il valore del campo "{0}" in modalità edit della grid',
       EXPECTED: 'Il campo "{0}" risulta non modificabile (read-only o disabilitato); nessuna modifica viene accettata',
-      PRIO: 'Bassa',
+      PRIO: 'Programmatore',
     },
     FIELD_REGEX: {
       OBJ: 'Regex campo: {0}',
@@ -106,7 +106,7 @@ const TEST_TEMPLATES = {
       TYPE: 'Business Logic',
       SCENARIO: 'Creare le condizioni di dati che violano la regola e procedere al salvataggio',
       EXPECTED: 'Il salvataggio viene bloccato e viene mostrato il messaggio: "{2}"; i dati non vengono salvati',
-      PRIO: 'Alta',
+      PRIO: 'Programmatore',
     },
     LOGIC_WECR: {
       OBJ: 'Controllo validazione riga',
@@ -127,14 +127,14 @@ const TEST_TEMPLATES = {
       TYPE: 'Validazione (WCV)',
       SCENARIO: 'Modificare il valore del campo "{1}" in modo da violare il controllo "{2}" e uscire dal record',
       EXPECTED: `Il sistema reagisce alla modifica eseguendo i controlli o ricalcoli previsti; in caso di errore mostra l'errore e il campo viene evidenziato`,
-      PRIO: 'Media',
+      PRIO: 'Programmatore',
     },
     LOGIC_WAF: {
       OBJ: 'Filtro: {0}',
       TYPE: 'Filtro / Ricerca',
       SCENARIO: `Modificare i filtri sulla grid in modo da violare il controllo "{2}" ed eseguire l'applica filtro`,
       EXPECTED: `Il sistema segnala l'errore e non esegue la ricerca`,
-      PRIO: 'Media',
+      PRIO: 'Programmatore',
     },
     LOGIC_GENERIC: {
       OBJ: 'Controllo logica: {0}',
@@ -148,70 +148,70 @@ const TEST_TEMPLATES = {
       TYPE: 'Funzionalità',
       SCENARIO: 'Cliccare il pulsante "{0}" nelle condizioni standard di utilizzo',
       EXPECTED: `{1}; l'interfaccia si aggiorna coerentemente e non si verificano errori`,
-      PRIO: 'Media',
+      PRIO: 'Programmatore',
     },
     LOV_LOAD: {
       OBJ: 'LOV: {0}',
       TYPE: 'UI / Dati',
       SCENARIO: 'Aprire la lista valori "{1}" tramite il relativo campo o pulsante di ricerca',
       EXPECTED: 'La lista si apre correttamente, è popolata con i valori attesi e permette la selezione; la voce scelta viene riportata nel campo',
-      PRIO: 'Media',
+      PRIO: 'Programmatore',
     },
     COMBO_LOAD: {
       OBJ: 'Combobox: {0}',
       TYPE: 'UI / Dati',
       SCENARIO: 'Espandere la tendina "{1}" e verificare le opzioni disponibili',
       EXPECTED: 'Tutte le opzioni previste sono presenti e selezionabili; la selezione aggiorna correttamente il valore del campo',
-      PRIO: 'Media',
+      PRIO: 'Programmatore',
     },
     LOV_CONFIG: {
       OBJ: 'Configurazione LOV: {0}',
       TYPE: 'UI / UX',
       SCENARIO: 'Verificare impostazioni: "Search as you type" disabilitato, presenza della lente di ricerca, "Display Null Value" attivo con carattere "-"',
       EXPECTED: 'La ricerca non parte in automatico; la lente è visibile; i valori nulli sono rappresentati correttamente',
-      PRIO: 'Media',
+      PRIO: 'Programmatore',
     },
     STD_TEMPLATE: {
       OBJ: 'Template Standard',
       TYPE: 'UI / Uniformità',
       SCENARIO: 'Verificare che la Grid utilizzi il template "Standard"',
       EXPECTED: "La region ha un aspetto uniforme alle altre maschere dell'applicazione",
-      PRIO: 'Bassa',
+      PRIO: 'Programmatore',
     },
     PK_CHECK: {
       OBJ: 'Verifica Primary Key',
       TYPE: 'DML / Integrità',
       SCENARIO: 'Controllare che nella configurazione della Grid sia definita almeno una colonna come Primary Key',
       EXPECTED: 'PK presente; il posizionamento del record e le operazioni di salvataggio funzionano correttamente',
-      PRIO: 'Alta',
+      PRIO: 'Programmatore',
     },
     EXPORT_CHECK: {
       OBJ: 'Export Excel/PDF',
       TYPE: 'Funzionalità',
       SCENARIO: "Eseguire un'estrazione dati e verificare che il foglio/file riporti l'alias corretto",
       EXPECTED: "L'export avviene con successo e il file prodotto è nominato correttamente",
-      PRIO: 'Bassa',
+      PRIO: 'Programmatore',
     },
     LAYOUT_CONFIG: {
       OBJ: 'Layout e Report Primario',
       TYPE: 'Configurazione UI',
       SCENARIO: 'Aggiustare larghezze, ordinamento e filtri di default; salvare la configurazione come Report Primario',
       EXPECTED: "Al caricamento della pagina, la Grid si presenta con il layout e l'ordinamento predefinito desiderato",
-      PRIO: 'Bassa',
+      PRIO: 'Programmatore',
     },
     FIELD_UPPER: {
       OBJ: 'Text Case UPPER: {0}',
       TYPE: 'UI / Standard',
       SCENARIO: 'Inserire testo in minuscolo nel campo "{0}" e verificare la conversione',
       EXPECTED: 'Il sistema converte automaticamente il testo in MAIUSCOLO',
-      PRIO: 'Bassa',
+      PRIO: 'Programmatore',
     },
     FILTER_LOGIC: {
       OBJ: 'Filtraggio Grid',
       TYPE: 'Funzionalità / Query',
       SCENARIO: 'Impostare filtri su uno o più criteri disponibili nella grid ed eseguire la ricerca; ripetere con combinazioni di filtri',
       EXPECTED: 'I risultati visualizzati corrispondono esattamente ai criteri impostati; la query applica correttamente tutti i filtri e la grid non mostra record estranei alla selezione',
-      PRIO: 'Media',
+      PRIO: 'Programmatore',
     },
   },
   ADVICE: {
@@ -620,14 +620,14 @@ function downloadTestCases() {
   const rows = [];
 
   // Intestazioni
-  const headers = ['ID', 'Area/Grid', 'Oggetto', 'Tipo Test', 'Test', 'Risultato Atteso', 'Priorità', 'Codice Riferimento', 'Esito (OK/KO)', 'Note', 'Esito (OK/KO) post correzione'];
+  const headers = ['ID', 'Area/Grid', 'Oggetto', 'Tipo Test', 'Test', 'Risultato Atteso', 'Codice Riferimento', 'Esito (OK/KO)', 'Note', 'Esito (OK/KO) post correzione'];
   rows.push(headers);
 
   let testId = 1;
 
   // Helper per aggiungere righe
-  const addTest = (area, oggetto, tipo, scenario, atteso, priorita = 'Media', codice = '') => {
-    rows.push([testId++, area, oggetto, tipo, scenario, atteso, priorita, codice, '']);
+  const addTest = (area, oggetto, tipo, scenario, atteso, priorita = 'Programmatore', codice = '') => {
+    rows.push([testId++, area, oggetto, tipo, scenario, atteso, codice, '']);
   };
 
   // 1. Test Globali (When New Form Instance)
