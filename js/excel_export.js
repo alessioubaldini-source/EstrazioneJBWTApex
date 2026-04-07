@@ -1,3 +1,186 @@
+// --- LOOKUP CENTRALIZZATA TEST STRINGS ---
+const TEST_TEMPLATES = {
+  GLOBAL: {
+    FORM_LOAD: {
+      OBJ: 'Caricamento Form',
+      TYPE: 'Inizializzazione',
+      SCENARIO: 'Aprire la form e verificare il completamento del caricamento iniziale: assenza di errori JS, esecuzione degli script WNFI e popolamento dei campi/grid iniziali',
+      EXPECTED: 'La form si carica correttamente: nessun errore in console, tutti gli script WNFI sono eseguiti, i campi con valori di default risultano già valorizzati e le grid iniziali sono popolate',
+      PRIO: 'Media',
+    },
+    PARAM_RESET: {
+      OBJ: 'Parametri Form',
+      TYPE: 'Stato',
+      SCENARIO: 'Verificare il ripristino/stato iniziale, premendo il Reset dei Filtri (se presenti) e il reimposta dei grid',
+      EXPECTED: 'I parametri assumono i valori di default previsti e si comportano correttamente come in fase di apertura',
+      PRIO: 'Bassa',
+    },
+  },
+  GRID: {
+    INSERT_OK: {
+      OBJ: 'Grid – Inserimento Record',
+      TYPE: 'Permessi / Funzionalità',
+      SCENARIO: 'Compilare tutti i campi obbligatori e cliccare Salva per inserire un nuovo record',
+      EXPECTED: 'Il record viene salvato correttamente; la riga appare nella grid con i dati inseriti; nessun messaggio di errore',
+      PRIO: 'Media',
+    },
+    INSERT_KO: {
+      OBJ: 'Grid – Inserimento Bloccato',
+      TYPE: 'Permessi',
+      SCENARIO: 'Verificare che il pulsante di inserimento non sia presente o sia disabilitato nella toolbar della grid',
+      EXPECTED: `Il pulsante di inserimento è assente; non è possibile aggiungere nuovi record dall'utente corrente`,
+      PRIO: 'Bassa',
+    },
+    UPDATE_OK: {
+      OBJ: 'Grid – Modifica Record',
+      TYPE: 'Permessi / Funzionalità',
+      SCENARIO: 'Selezionare un record esistente, modificare almeno un campo editabile e salvare',
+      EXPECTED: 'La modifica viene salvata correttamente; i valori aggiornati sono visibili nella grid; nessun errore di validazione o di permesso',
+      PRIO: 'Media',
+    },
+    UPDATE_KO: {
+      OBJ: 'Grid – Modifica Bloccata',
+      TYPE: 'Permessi',
+      SCENARIO: 'Tentare di modificare un campo nella grid; verificare che tutti i campi risultino in sola lettura',
+      EXPECTED: 'I campi sono non modificabili; il pulsante Salva è assente o disabilitato; nessuna modifica può essere apportata',
+      PRIO: 'Bassa',
+    },
+    DELETE_OK: {
+      OBJ: 'Grid – Cancellazione Record',
+      TYPE: 'Permessi / Funzionalità',
+      SCENARIO: 'Selezionare un record non referenziato da altri dati e procedere con la cancellazione',
+      EXPECTED: 'Il record viene eliminato; scompare dalla grid dopo il salvataggio; nessun errore di integrità referenziale',
+      PRIO: 'Media',
+    },
+    DELETE_KO: {
+      OBJ: 'Grid – Cancellazione Bloccata',
+      TYPE: 'Permessi',
+      SCENARIO: 'Verificare che il pulsante di cancellazione non sia presente o sia disabilitato nella toolbar della grid',
+      EXPECTED: 'Il pulsante di cancellazione è assente; non è possibile eliminare record',
+      PRIO: 'Bassa',
+    },
+    FIELD_MANDATORY: {
+      OBJ: 'Campo obbligatorio: {0}',
+      TYPE: 'Validazione',
+      SCENARIO: 'Lasciare vuoto il campo "{0}", compilare tutti gli altri campi obbligatori e tentare il salvataggio',
+      EXPECTED: 'Il sistema blocca il salvataggio e segnala con errore che il campo "{0}" è obbligatorio',
+      PRIO: 'Alta',
+    },
+    FIELD_LENGTH: {
+      OBJ: 'Lunghezza max: {0}',
+      TYPE: 'Input / Validazione',
+      SCENARIO: 'Nel campo "{0}" inserire una stringa maggiore di {1} caratteri',
+      EXPECTED: `Il sistema impedisce il salvataggio`,
+      PRIO: 'Bassa',
+    },
+    FIELD_READONLY: {
+      OBJ: 'Campo sola lettura: {0}',
+      TYPE: 'UI / Permessi',
+      SCENARIO: 'Tentare di modificare il valore del campo "{0}" in modalità edit della grid',
+      EXPECTED: 'Il campo "{0}" risulta non modificabile (read-only o disabilitato); nessuna modifica viene accettata',
+      PRIO: 'Bassa',
+    },
+    FIELD_REGEX: {
+      OBJ: 'Regex campo: {0}',
+      TYPE: 'Validazione Formato',
+      SCENARIO: 'Inserire nel campo "{0}" un valore non conforme alla regex ({1}) — es. caratteri non ammessi o formato errato',
+      EXPECTED: `Il sistema mostra l'errore di validazione: "{2}"; il salvataggio è bloccato finché il valore non è corretto`,
+      PRIO: 'Alta',
+    },
+    LOGIC_BEFORE_COMMIT: {
+      OBJ: 'Regola commit: {0}',
+      TYPE: 'Business Logic',
+      SCENARIO: 'Creare le condizioni di dati che violano la regola "{0}" e procedere al salvataggio',
+      EXPECTED: 'Il salvataggio viene bloccato e viene mostrato il messaggio: "{2}"; i dati non vengono salvati',
+      PRIO: 'Alta',
+    },
+    LOGIC_WECR: {
+      OBJ: 'Controllo validazione riga',
+      TYPE: 'Validazione (WECR)',
+      SCENARIO: 'Modificare i valori della riga in modo da violare il controllo "{2}" e navigare alla riga successiva o salvare',
+      EXPECTED: 'Il sistema blocca la navigazione/salvataggio e mostra il messaggio a video evidenziando i campi da correggere',
+      PRIO: 'Alta',
+    },
+    LOGIC_WFEV: {
+      OBJ: 'Validazione campo: {1}',
+      TYPE: 'Validazione (WFEV)',
+      SCENARIO: 'Nel campo "{1}" inserire un valore in modo da violare il controllo "{2}" e uscire dal record',
+      EXPECTED: `Il sistema segnala l'errore e il campo viene evidenziato`,
+      PRIO: 'Alta',
+    },
+    LOGIC_WCV: {
+      OBJ: 'Validazione alla modifica: {1}',
+      TYPE: 'Validazione (WCV)',
+      SCENARIO: 'Modificare il valore del campo "{1}" in modo da violare il controllo "{2}" e uscire dal record',
+      EXPECTED: `Il sistema reagisce alla modifica eseguendo i controlli o ricalcoli previsti; in caso di errore mostra l'errore e il campo viene evidenziato`,
+      PRIO: 'Media',
+    },
+    LOGIC_WAF: {
+      OBJ: 'Filtro: {0}',
+      TYPE: 'Filtro / Ricerca',
+      SCENARIO: `Modificare i filtri sulla grid in modo da violare il controllo "{2}" ed eseguire l'applica filtro`,
+      EXPECTED: `Il sistema segnala l'errore e non esegue la ricerca`,
+      PRIO: 'Media',
+    },
+    LOGIC_GENERIC: {
+      OBJ: 'Controllo logica: {0}',
+      TYPE: 'Validazione Business',
+      SCENARIO: `Eseguire l'azione "{0}"{1} in condizioni non valide o con dati volutamente errati`,
+      EXPECTED: `Il sistema mostra il messaggio di errore atteso: "{2}" e impedisce il completamento dell'operazione`,
+      PRIO: 'Alta',
+    },
+    BUTTON_ACTION: {
+      OBJ: 'Pulsante: {0}',
+      TYPE: 'Funzionalità',
+      SCENARIO: 'Cliccare il pulsante "{0}" nelle condizioni standard di utilizzo',
+      EXPECTED: `{1}; l'interfaccia si aggiorna coerentemente e non si verificano errori`,
+      PRIO: 'Media',
+    },
+    LOV_LOAD: {
+      OBJ: 'LOV: {0}',
+      TYPE: 'UI / Dati',
+      SCENARIO: 'Aprire la lista valori "{1}" tramite il relativo campo o pulsante di ricerca',
+      EXPECTED: 'La lista si apre correttamente, è popolata con i valori attesi e permette la selezione; la voce scelta viene riportata nel campo',
+      PRIO: 'Media',
+    },
+    COMBO_LOAD: {
+      OBJ: 'Combobox: {0}',
+      TYPE: 'UI / Dati',
+      SCENARIO: 'Espandere la tendina "{1}" e verificare le opzioni disponibili',
+      EXPECTED: 'Tutte le opzioni previste sono presenti e selezionabili; la selezione aggiorna correttamente il valore del campo',
+      PRIO: 'Media',
+    },
+    FILTER_LOGIC: {
+      OBJ: 'Filtraggio Grid',
+      TYPE: 'Funzionalità / Query',
+      SCENARIO: 'Impostare filtri su uno o più criteri disponibili nella grid ed eseguire la ricerca; ripetere con combinazioni di filtri',
+      EXPECTED: 'I risultati visualizzati corrispondono esattamente ai criteri impostati; la query applica correttamente tutti i filtri e la grid non mostra record estranei alla selezione',
+      PRIO: 'Media',
+    },
+  },
+  ADVICE: {
+    TITLE: 'CONSIGLI SU RISOLUZIONE DI PROBLEMI',
+    HEADERS: ['Problema', 'Soluzione/Consiglio'],
+    ITEMS: [
+      ['Session State Protection', 'Verificare che i Page Item hidden non abbiano "Value Protected" su Yes '],
+      ['Grid non salva', 'Controllare che la colonna Primary Key sia impostata come "Primary Key" nella Grid.'],
+      ['Non mostra dati (lov, combo, grid vuota)', 'Verificare query e assicurarsi di aver inserito i Page Item in "Page Items to Submit".'],
+    ],
+  },
+};
+
+/**
+ * Utility per rimpiazzare i placeholder {0}, {1} etc nelle stringhe della lookup
+ */
+function tpl(templateObj, ...args) {
+  const res = { ...templateObj };
+  const format = (s) => s.replace(/{(\d+)}/g, (m, n) => (args[n] !== undefined ? args[n] : m));
+  res.OBJ = format(res.OBJ);
+  res.SCENARIO = format(res.SCENARIO);
+  res.EXPECTED = format(res.EXPECTED);
+  return res;
+}
+
 // Helper per applicare lo stile bold (funziona se la libreria supporta lo styling, es. xlsx-js-style)
 const setBoldHeaders = (ws) => {
   if (!ws || !ws['!ref']) return;
@@ -406,7 +589,15 @@ function downloadTestCases() {
         )
         .join('\n---\n');
     }
-    addTest('Global', 'Form Load', 'Inizializzazione', 'Aprire la form e verificare il caricamento iniziale', 'La form si apre senza errori e vengono eseguiti gli script di avvio: ' + currentData.whenNewFormInstance.join(', '), 'Alta', codeRef);
+    const g = tpl(TEST_TEMPLATES.GLOBAL.FORM_LOAD, currentData.whenNewFormInstance.join(', '));
+    addTest('Global', g.OBJ, g.TYPE, g.SCENARIO, g.EXPECTED, g.PRIO, codeRef);
+  }
+
+  // 1.1 Test Parametri (Stato Iniziale)
+  if (currentData.formParams && currentData.formParams.length > 0) {
+    const paramNames = currentData.formParams.map((p) => p.name).join(', ');
+    const p = tpl(TEST_TEMPLATES.GLOBAL.PARAM_RESET, paramNames);
+    addTest('Global', p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
   }
 
   // 2. Iterazione su Grids
@@ -415,64 +606,101 @@ function downloadTestCases() {
     if (!labelInfo && grid.tab && grid.tab.label) {
       labelInfo = `Tab: ${grid.tab.label}`;
     }
-    const gridName = labelInfo ? `${grid.name} (${labelInfo})` : grid.name;
+    const gridName = labelInfo ? `${labelInfo} (${grid.name})` : grid.name;
 
     // A. Permessi CRUD
     if (grid.insertAllowed === 'true') {
-      addTest(gridName, 'Grid', 'Permessi', 'Provare a inserire un nuovo record', 'Inserimento consentito', 'Alta');
+      const p = TEST_TEMPLATES.GRID.INSERT_OK;
+      addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
     } else {
-      addTest(gridName, 'Grid', 'Permessi', 'Verificare assenza funzionalità inserimento', 'Inserimento NON consentito (tasto disabilitato o assente)', 'Bassa');
+      const p = TEST_TEMPLATES.GRID.INSERT_KO;
+      addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
     }
 
     if (grid.updateAllowed === 'true') {
-      addTest(gridName, 'Grid', 'Permessi', 'Modificare un record esistente e salvare', 'Salvataggio avvenuto con successo', 'Alta');
+      const p = TEST_TEMPLATES.GRID.UPDATE_OK;
+      addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
     } else {
-      addTest(gridName, 'Grid', 'Permessi', 'Provare a modificare un record', 'Modifica NON consentita (campi read-only)', 'Bassa');
+      const p = TEST_TEMPLATES.GRID.UPDATE_KO;
+      addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
     }
 
     if (grid.deleteAllowed === 'true') {
-      addTest(gridName, 'Grid', 'Permessi', 'Cancellare un record esistente', 'Cancellazione avvenuta con successo', 'Media');
+      const p = TEST_TEMPLATES.GRID.DELETE_OK;
+      addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
+    } else {
+      const p = TEST_TEMPLATES.GRID.DELETE_KO;
+      addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
+    }
+
+    // B. Test Filtro Dati (se presente logica di query o template)
+    if (grid.rpcExpand || (grid.templates && Object.keys(grid.templates).length > 0)) {
+      const p = TEST_TEMPLATES.GRID.FILTER_LOGIC;
+      addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
     }
 
     // B. Campi (Validazioni UI)
     grid.fields.forEach((field) => {
+      // Esclusione campi hidden
+      if (field.isHidden === 'true') return;
+      if (field.name && field.name.includes('F_SEL')) return;
+
       const fieldName = field.label || field.name;
 
       // Obbligatorietà
-      if (field.isMandatory === 'true') {
-        addTest(gridName, `Campo: ${fieldName}`, 'Validazione', `Lasciare vuoto il campo "${fieldName}" e tentare il salvataggio`, 'Il sistema deve bloccare il salvataggio e mostrare errore di campo obbligatorio', 'Alta');
+      if (field.isEditable !== 'false' && field.isMandatory === 'true' && (grid.insertAllowed === 'true' || grid.updateAllowed === 'true')) {
+        const p = tpl(TEST_TEMPLATES.GRID.FIELD_MANDATORY, fieldName);
+        addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
       }
 
       // Lunghezza
-      if (field.length && parseInt(field.length) > 0) {
-        addTest(gridName, `Campo: ${fieldName}`, 'Input', `Inserire più di ${field.length} caratteri nel campo`, `Il sistema non deve permettere l'inserimento o troncare a ${field.length} caratteri`, 'Bassa');
+      if (field.isEditable !== 'false' && field.length && parseInt(field.length) > 0) {
+        const p = tpl(TEST_TEMPLATES.GRID.FIELD_LENGTH, fieldName, field.length);
+        addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
       }
 
-      // Editabilità
-      if (field.isEditable === 'false') {
-        addTest(gridName, `Campo: ${fieldName}`, 'UI', `Verificare che il campo "${fieldName}" non sia modificabile`, 'Campo in sola lettura (grigio/disabilitato)', 'Media');
+      // Editabilità (testiamo il readonly puntuale solo se la grid in generale permette l'update)
+      if (grid.updateAllowed === 'true' && field.isEditable === 'false') {
+        const p = tpl(TEST_TEMPLATES.GRID.FIELD_READONLY, fieldName);
+        addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
       }
 
       // ValidRegex
-      if (field.validRegex) {
-        addTest(gridName, `Campo: ${fieldName}`, 'Validazione Regex', `Inserire valore non conforme alla regex: ${field.validRegex.regex}`, `Errore atteso: ${field.validRegex.message || 'Errore validazione'}`, 'Alta');
+      if (field.isEditable !== 'false' && field.validRegex) {
+        const p = tpl(TEST_TEMPLATES.GRID.FIELD_REGEX, fieldName, field.validRegex.regex, field.validRegex.message || 'Errore validazione');
+        addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
       }
     });
 
     // C. Validazioni Logiche (Before Commit)
     grid.beforeCommitValidation.forEach((bc) => {
-      addTest(gridName, `Validazione: ${bc.name}`, 'Business Logic', `Creare condizione per far fallire: ${bc.function || 'SQL Check'}`, `Il salvataggio fallisce con messaggio: "${bc.failMessage}"`, 'Alta', bc.sql || '');
+      const p = tpl(TEST_TEMPLATES.GRID.LOGIC_BEFORE_COMMIT, bc.name, bc.function || 'SQL Check', bc.failMessage);
+      addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO, bc.sql || '');
     });
 
     // C.2 Eventi con Fail Message (Controlli)
     grid.events.forEach((evt) => {
+      const evtName = evt.name.toLowerCase();
+      let template = TEST_TEMPLATES.GRID.LOGIC_GENERIC;
+      if (evtName.includes('whenexitchangedrecord')) template = TEST_TEMPLATES.GRID.LOGIC_WECR;
+      else if (evtName.includes('whenfinishedit')) template = TEST_TEMPLATES.GRID.LOGIC_WFEV;
+      else if (evtName.includes('whenchangevalue')) template = TEST_TEMPLATES.GRID.LOGIC_WCV;
+      else if (evtName.includes('whenapplyfilter')) template = TEST_TEMPLATES.GRID.LOGIC_WAF;
+
       if (evt.groovyScripts && evt.groovyScripts.length > 0) {
         evt.groovyScripts.forEach((action) => {
           if (action.classes && action.classes.length > 0) {
             action.classes.forEach((cls) => {
               if (cls.failMessage) {
-                const contextMsg = evt.context ? ` sul campo "${evt.context}"` : '';
-                addTest(gridName, `Controllo: ${evt.name}`, 'Validazione', `Scatenare l'evento ${evt.name}${contextMsg} con dati non validi`, `Errore atteso: ${cls.failMessage}`, 'Alta', cls.script || cls.sql || '');
+                const fieldName = evt.context || '';
+                // Recupero la label del campo (se presente) per rendere il test plan più leggibile
+                const fieldObj = fieldName ? grid.fields.find((f) => f.name === fieldName) : null;
+                const fieldLabel = fieldObj && fieldObj.label ? fieldObj.label : fieldName;
+
+                const contextMsg = fieldLabel ? ` sul campo "${fieldLabel}"` : '';
+                const arg1 = template === TEST_TEMPLATES.GRID.LOGIC_GENERIC ? contextMsg : fieldLabel;
+                const p = tpl(template, evt.name, arg1, cls.failMessage);
+                addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO, cls.script || cls.sql || '');
               }
             });
           }
@@ -484,8 +712,10 @@ function downloadTestCases() {
     const allButtons = [...grid.topToolbarButtons, ...grid.bottomToolbarButtons];
     allButtons.forEach((btn) => {
       const btnLabel = btn.label || btn.name;
+      if (btnLabel === 'Esegui filtro' || btnLabel === 'Pulisci filtro' || btnLabel === 'Indietro') return;
+
       let actionDesc = 'Esecuzione azione';
-      if (btn.callFormName) actionDesc = `Apertura form/popup: ${btn.callFormName}`;
+      if (btn.callFormName) actionDesc = `Apertura form/popup`;
       else if (btn.actionRef.length > 0) actionDesc = `Esecuzione logica: ${btn.actionRef.join(', ')}`;
 
       let codeRef = '';
@@ -501,17 +731,19 @@ function downloadTestCases() {
           )
           .join('\n---\n');
       }
-
-      addTest(gridName, `Bottone: ${btnLabel}`, 'Funzionalità', `Cliccare sul bottone "${btnLabel}"`, `Risultato atteso: ${actionDesc}`, 'Media', codeRef);
+      const p = tpl(TEST_TEMPLATES.GRID.BUTTON_ACTION, btnLabel, actionDesc);
+      addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO, codeRef);
     });
 
     // E. LOV e Combobox
     grid.listOfValues.forEach((lov) => {
-      addTest(gridName, `LOV: ${lov.name}`, 'UI/Dati', `Aprire la lista valori per ${lov.label || lov.name}`, 'La lista appare popolata con i dati corretti', 'Media', lov.value || '');
+      const p = tpl(TEST_TEMPLATES.GRID.LOV_LOAD, lov.label || lov.name, lov.label || lov.name);
+      addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO, lov.value || '');
     });
 
     grid.comboboxes.forEach((combo) => {
-      addTest(gridName, `Combo: ${combo.name}`, 'UI/Dati', `Verificare le opzioni della tendina ${combo.label || combo.name}`, 'Le opzioni sono selezionabili correttamente', 'Media', combo.sqlValue || '');
+      const p = tpl(TEST_TEMPLATES.GRID.COMBO_LOAD, combo.label || combo.name, combo.label || combo.name);
+      addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO, combo.sqlValue || '');
     });
   });
 
@@ -537,12 +769,10 @@ function downloadTestCases() {
 
   // Aggiunta foglio "Consigli su risoluzione di problemi"
   const adviceRows = [];
-  adviceRows.push(['CONSIGLI SU RISOLUZIONE DI PROBLEMI']);
+  adviceRows.push([TEST_TEMPLATES.ADVICE.TITLE]);
   adviceRows.push([]);
-  adviceRows.push(['Problema', 'Soluzione/Consiglio']);
-  adviceRows.push(['Session State Protection', 'Verificare che i Page Item hidden non abbiano "Value Protected" su Yes ']);
-  adviceRows.push(['Grid non salva', 'Controllare che la colonna Primary Key sia impostata come "Primary Key" nella Grid.']);
-  adviceRows.push(['Non mostra dati (lov, combo, grid vuota)', 'Verificare query e assicurarsi di aver inserito i Page Item in "Page Items to Submit".']);
+  adviceRows.push(TEST_TEMPLATES.ADVICE.HEADERS);
+  TEST_TEMPLATES.ADVICE.ITEMS.forEach((item) => adviceRows.push(item));
 
   const wsAdvice = XLSX.utils.aoa_to_sheet(adviceRows);
   wsAdvice['!cols'] = [
