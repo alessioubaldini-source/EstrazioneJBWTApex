@@ -15,6 +15,20 @@ const TEST_TEMPLATES = {
       EXPECTED: 'I parametri assumono i valori di default previsti e si comportano correttamente come in fase di apertura',
       PRIO: 'Bassa',
     },
+    PAGE_NAME: {
+      OBJ: 'Nome Pagina (Tab)',
+      TYPE: 'UI / Standard',
+      SCENARIO: 'Verificare che il titolo della pagina visualizzato nel tab del browser sia corretto',
+      EXPECTED: 'Il titolo corrisponde alla descrizione della maschera ed è conforme agli standard',
+      PRIO: 'Bassa',
+    },
+    MASK_ALIAS: {
+      OBJ: 'Alias Maschera: {0}',
+      TYPE: 'Configurazione / jBWT',
+      SCENARIO: "Verificare che l'alias della pagina sia impostato correttamente per permettere la chiamata da jBWT",
+      EXPECTED: 'L\'alias "{0}" è configurato; la maschera è raggiungibile',
+      PRIO: 'Alta',
+    },
   },
   GRID: {
     INSERT_OK: {
@@ -149,6 +163,48 @@ const TEST_TEMPLATES = {
       SCENARIO: 'Espandere la tendina "{1}" e verificare le opzioni disponibili',
       EXPECTED: 'Tutte le opzioni previste sono presenti e selezionabili; la selezione aggiorna correttamente il valore del campo',
       PRIO: 'Media',
+    },
+    LOV_CONFIG: {
+      OBJ: 'Configurazione LOV: {0}',
+      TYPE: 'UI / UX',
+      SCENARIO: 'Verificare impostazioni: "Search as you type" disabilitato, presenza della lente di ricerca, "Display Null Value" attivo con carattere "-"',
+      EXPECTED: 'La ricerca non parte in automatico; la lente è visibile; i valori nulli sono rappresentati correttamente',
+      PRIO: 'Media',
+    },
+    STD_TEMPLATE: {
+      OBJ: 'Template Standard',
+      TYPE: 'UI / Uniformità',
+      SCENARIO: 'Verificare che la Grid utilizzi il template "Standard"',
+      EXPECTED: "La region ha un aspetto uniforme alle altre maschere dell'applicazione",
+      PRIO: 'Bassa',
+    },
+    PK_CHECK: {
+      OBJ: 'Verifica Primary Key',
+      TYPE: 'DML / Integrità',
+      SCENARIO: 'Controllare che nella configurazione della Grid sia definita almeno una colonna come Primary Key',
+      EXPECTED: 'PK presente; il posizionamento del record e le operazioni di salvataggio funzionano correttamente',
+      PRIO: 'Alta',
+    },
+    EXPORT_CHECK: {
+      OBJ: 'Export Excel/PDF',
+      TYPE: 'Funzionalità',
+      SCENARIO: "Eseguire un'estrazione dati e verificare che il foglio/file riporti l'alias corretto",
+      EXPECTED: "L'export avviene con successo e il file prodotto è nominato correttamente",
+      PRIO: 'Bassa',
+    },
+    LAYOUT_CONFIG: {
+      OBJ: 'Layout e Report Primario',
+      TYPE: 'Configurazione UI',
+      SCENARIO: 'Aggiustare larghezze, ordinamento e filtri di default; salvare la configurazione come Report Primario',
+      EXPECTED: "Al caricamento della pagina, la Grid si presenta con il layout e l'ordinamento predefinito desiderato",
+      PRIO: 'Bassa',
+    },
+    FIELD_UPPER: {
+      OBJ: 'Text Case UPPER: {0}',
+      TYPE: 'UI / Standard',
+      SCENARIO: 'Inserire testo in minuscolo nel campo "{0}" e verificare la conversione',
+      EXPECTED: 'Il sistema converte automaticamente il testo in MAIUSCOLO',
+      PRIO: 'Bassa',
     },
     FILTER_LOGIC: {
       OBJ: 'Filtraggio Grid',
@@ -600,6 +656,12 @@ function downloadTestCases() {
     addTest('Global', p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
   }
 
+  // 1.2 Nuovi Test Globali (Page Name & Alias)
+  const pg = TEST_TEMPLATES.GLOBAL.PAGE_NAME;
+  addTest('Global', pg.OBJ, pg.TYPE, pg.SCENARIO, pg.EXPECTED, pg.PRIO);
+  const al = tpl(TEST_TEMPLATES.GLOBAL.MASK_ALIAS, currentFilename.replace(/\.xml$/i, '').toLowerCase());
+  addTest('Global', al.OBJ, al.TYPE, al.SCENARIO, al.EXPECTED, al.PRIO);
+
   // 2. Iterazione su Grids
   currentData.grids.forEach((grid) => {
     let labelInfo = grid.label;
@@ -633,6 +695,16 @@ function downloadTestCases() {
       addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
     }
 
+    // A.1 Test Configurazione Standard Grid
+    const st = TEST_TEMPLATES.GRID.STD_TEMPLATE;
+    addTest(gridName, st.OBJ, st.TYPE, st.SCENARIO, st.EXPECTED, st.PRIO);
+    const pk = TEST_TEMPLATES.GRID.PK_CHECK;
+    addTest(gridName, pk.OBJ, pk.TYPE, pk.SCENARIO, pk.EXPECTED, pk.PRIO);
+    const ex = TEST_TEMPLATES.GRID.EXPORT_CHECK;
+    addTest(gridName, ex.OBJ, ex.TYPE, ex.SCENARIO, ex.EXPECTED, ex.PRIO);
+    const ly = TEST_TEMPLATES.GRID.LAYOUT_CONFIG;
+    addTest(gridName, ly.OBJ, ly.TYPE, ly.SCENARIO, ly.EXPECTED, ly.PRIO);
+
     // B. Test Filtro Dati (se presente logica di query o template)
     if (grid.rpcExpand || (grid.templates && Object.keys(grid.templates).length > 0)) {
       const p = TEST_TEMPLATES.GRID.FILTER_LOGIC;
@@ -652,6 +724,12 @@ function downloadTestCases() {
         const p = tpl(TEST_TEMPLATES.GRID.FIELD_READONLY, fieldName);
         addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
       } else {
+        // Test Text Case UPPER per campi editabili
+        if (field.isEditable !== 'false') {
+          const up = tpl(TEST_TEMPLATES.GRID.FIELD_UPPER, fieldName);
+          addTest(gridName, up.OBJ, up.TYPE, up.SCENARIO, up.EXPECTED, up.PRIO);
+        }
+
         // Obbligatorietà
         if (field.isEditable !== 'false' && field.isMandatory === 'true' && (grid.insertAllowed === 'true' || grid.updateAllowed === 'true')) {
           const p = tpl(TEST_TEMPLATES.GRID.FIELD_MANDATORY, fieldName);
@@ -738,11 +816,15 @@ function downloadTestCases() {
     grid.listOfValues.forEach((lov) => {
       const p = tpl(TEST_TEMPLATES.GRID.LOV_LOAD, lov.label || lov.name, lov.label || lov.name);
       addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO, lov.value || '');
+      // Test Configurazione UI LOV
+      const cf = tpl(TEST_TEMPLATES.GRID.LOV_CONFIG, lov.label || lov.name);
+      addTest(gridName, cf.OBJ, cf.TYPE, cf.SCENARIO, cf.EXPECTED, cf.PRIO);
     });
 
     grid.comboboxes.forEach((combo) => {
       const p = tpl(TEST_TEMPLATES.GRID.COMBO_LOAD, combo.label || combo.name, combo.label || combo.name);
       addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO, combo.sqlValue || '');
+      // Nota: Le combo non hanno ricerca e lente, quindi non aggiungiamo LOV_CONFIG qui
     });
   });
 
