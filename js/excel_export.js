@@ -88,7 +88,7 @@ const TEST_TEMPLATES = {
       PRIO: 'Alta',
     },
     LOGIC_BEFORE_COMMIT: {
-      OBJ: 'Regola commit: {0}',
+      OBJ: 'Controlli al Salvataggio',
       TYPE: 'Business Logic',
       SCENARIO: 'Creare le condizioni di dati che violano la regola "{0}" e procedere al salvataggio',
       EXPECTED: 'Il salvataggio viene bloccato e viene mostrato il messaggio: "{2}"; i dati non vengono salvati',
