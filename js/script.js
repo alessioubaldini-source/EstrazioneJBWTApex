@@ -19,6 +19,7 @@ async function loadDefaultXML() {
         currentFilename = 'AUTG0006.xml';
         rawXMLText = response;
         const data = parseXML(response);
+        document.getElementById('currentFileNameDisplay').textContent = currentFilename;
         renderData(data); // This will render the normal view
       } catch (e) {
         console.log('File di default non trovato, attesa upload utente');
@@ -46,6 +47,7 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
     const text = await file.text();
     rawXMLText = text;
     const data = parseXML(text);
+    document.getElementById('currentFileNameDisplay').textContent = currentFilename;
     renderData(data);
   } catch (err) {
     errorEl.textContent = err.message;
