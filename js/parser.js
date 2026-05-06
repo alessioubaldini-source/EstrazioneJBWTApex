@@ -462,12 +462,30 @@ function extractActions(rootNode, filterFn = null) {
             alias: p.getAttribute('alias'),
           });
         });
-        actionData.classes.push({
+
+        const classItem = {
           type: 'paramsList',
           className: className,
           classType: classType,
           params: params,
-        });
+        };
+
+        // Estrai formName, formVariant, formTarget se è una CallFormAction
+        if (classType === 'CallFormAction' || className === 'CallFormAction') {
+          const formNameParam = groovyClass.querySelector('param[name="formName"]');
+          if (formNameParam) {
+            classItem.formName = formNameParam.textContent.trim();
+          }
+          const formVariantParam = groovyClass.querySelector('param[name="formVariant"]');
+          if (formVariantParam) {
+            classItem.formVariant = formVariantParam.textContent.trim();
+          }
+          const formTargetParam = groovyClass.querySelector('param[name="formTarget"]');
+          if (formTargetParam) {
+            classItem.formTarget = formTargetParam.textContent.trim();
+          }
+        }
+        actionData.classes.push(classItem);
       }
     });
 

@@ -127,16 +127,36 @@ function findParentTab(gridElement) {
   return null;
 }
 
-function concatenateGroovyScripts(actionRefs, actionsMap) {
+function concatenateGroovyScripts(actionRefs, actionsMap, seen = new Set()) {
   if (!actionRefs || actionRefs.length === 0) return [];
   const concatenated = [];
   actionRefs.forEach((actionRef) => {
-    if (actionsMap[actionRef]) {
-      concatenated.push({
+    if (actionsMap[actionRef] && !seen.has(actionRef)) {
+      seen.add(actionRef);
+      const entry = {
         actionName: actionRef,
         classes: actionsMap[actionRef].classes || [],
         openPopup: actionsMap[actionRef].openPopup || null,
+      };
+      concatenated.push(entry);
+
+      // Ricerca azioni richiamate indirettamente tramite NEXT_ACTIONS negli script
+      const indirectRefs = [];
+      entry.classes.forEach((cls) => {
+        const scriptContent = cls.script || cls.sql || '';
+        const matches = scriptContent.match(/NEXT_ACTIONS\s*=\s*["']([^"']+)["']/g);
+        if (matches) {
+          matches.forEach((m) => {
+            const name = m.split(/["']/)[1];
+            if (name) indirectRefs.push(name);
+          });
+        }
       });
+
+      if (indirectRefs.length > 0) {
+        const nested = concatenateGroovyScripts(indirectRefs, actionsMap, seen);
+        concatenated.push(...nested);
+      }
     }
   });
   return concatenated;

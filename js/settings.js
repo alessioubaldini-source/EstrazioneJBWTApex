@@ -2,6 +2,7 @@ let appSettings = {
   ranges: [],
   messages: {},
   dependencies: {},
+  popupForms: [],
 };
 
 function loadSettings() {
@@ -21,11 +22,13 @@ function openSettings() {
   const elMsgs = document.getElementById('settingsMessages');
   const elApex = document.getElementById('settingsApex');
   const elDeps = document.getElementById('settingsDependencies');
+  const elPopups = document.getElementById('settingsPopups');
 
   if (elRanges) elRanges.value = JSON.stringify(appSettings.ranges || [], null, 2);
   if (elMsgs) elMsgs.value = JSON.stringify(appSettings.messages || {}, null, 2);
   if (elApex) elApex.value = JSON.stringify(appSettings.apex || {}, null, 2);
   if (elDeps) elDeps.value = JSON.stringify(appSettings.dependencies || {}, null, 2);
+  if (elPopups) elPopups.value = JSON.stringify(appSettings.popupForms || [], null, 2);
 
   document.getElementById('settingsModal').classList.add('open');
 }
@@ -40,11 +43,13 @@ function saveSettings() {
     const elMsgs = document.getElementById('settingsMessages');
     const elApex = document.getElementById('settingsApex');
     const elDeps = document.getElementById('settingsDependencies');
+    const elPopups = document.getElementById('settingsPopups');
 
     if (elRanges) appSettings.ranges = elRanges.value ? JSON.parse(elRanges.value) : [];
     if (elMsgs) appSettings.messages = elMsgs.value ? JSON.parse(elMsgs.value) : {};
     if (elApex) appSettings.apex = elApex.value ? JSON.parse(elApex.value) : {};
     if (elDeps) appSettings.dependencies = elDeps.value ? JSON.parse(elDeps.value) : {};
+    if (elPopups) appSettings.popupForms = elPopups.value ? JSON.parse(elPopups.value) : [];
 
     localStorage.setItem('JBWT_APP_SETTINGS', JSON.stringify(appSettings));
     closeSettings();

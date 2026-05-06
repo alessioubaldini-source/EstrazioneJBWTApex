@@ -93,26 +93,19 @@ function renderData(data) {
 
   if (data.globalActions && data.globalActions.length > 0) {
     const usedActions = new Set();
-    if (data.whenNewFormInstance) {
-      data.whenNewFormInstance.forEach((a) => usedActions.add(a));
-    }
+
+    const markUsed = (scripts) => {
+      if (scripts) scripts.forEach((s) => usedActions.add(s.actionName));
+    };
+
+    if (data.whenNewFormInstance) data.whenNewFormInstance.forEach((a) => usedActions.add(a));
+    markUsed(data.whenNewFormInstanceGroovy);
+
     if (data.grids) {
       data.grids.forEach((grid) => {
-        if (grid.events) {
-          grid.events.forEach((evt) => {
-            if (evt.actionRefs) evt.actionRefs.forEach((a) => usedActions.add(a));
-          });
-        }
-        if (grid.topToolbarButtons) {
-          grid.topToolbarButtons.forEach((btn) => {
-            if (btn.actionRef) btn.actionRef.forEach((a) => usedActions.add(a));
-          });
-        }
-        if (grid.bottomToolbarButtons) {
-          grid.bottomToolbarButtons.forEach((btn) => {
-            if (btn.actionRef) btn.actionRef.forEach((a) => usedActions.add(a));
-          });
-        }
+        grid.events.forEach((evt) => markUsed(evt.groovyScripts));
+        grid.topToolbarButtons.forEach((btn) => markUsed(btn.groovyScripts));
+        grid.bottomToolbarButtons.forEach((btn) => markUsed(btn.groovyScripts));
       });
     }
 
@@ -718,14 +711,32 @@ function renderGroovyScripts(scripts, prefix) {
                   if (item.type === 'paramsList') {
                     let callFormHelp = '';
                     if (item.classType === 'CallFormAction' || item.className === 'CallFormAction') {
+                      const popupList = appSettings.popupForms || [];
+                      const targetForm = (item.formName || '').toUpperCase();
+                      const isPopupTarget = targetForm && popupList.some((pf) => pf.toUpperCase() === targetForm);
+
+                      const snippet1 = `ApexUtils.callForm(PAGE_ID, { Pxx_ID: 10, ... });`;
+                      const snippet2 = `ApexUtils.callForm(PAGE_ID, { Pxx_ID: 10, ... }, { mode: 'same' });`;
+
                       callFormHelp = `
-                        <div class="mt-2 p-2" style="background-color: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 0 4px 4px 0;">
-                            <p class="text-xs font-bold mb-1" style="color: #0369a1;">💡 Modalità di chiamata in APEX:</p>
-                            <div style="font-family: monospace; font-size: 11px; color: #0c4a6e;">
-                                <div class="mb-1"><strong>// Caso 1: Navigazione base alla pagina 10 con parametri</strong></div>
-                                <div class="mb-2">ApexUtils.callForm(10, { P10_ID: 50, P10_MODE: 'EDIT' });</div>
-                                <div class="mb-1"><strong>// Caso 2: popup o apertura su stessa pagina</strong></div>
-                                <div>ApexUtils.callForm(102, { P102_MASTER: 1 }, { mode: 'same' });</div>
+                        <div class="mt-4 p-4" style="background-color: ${isPopupTarget ? '#fff7ed' : '#f0f9ff'}; border-left: 6px solid ${isPopupTarget ? '#f97316' : '#0ea5e9'}; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid ${isPopupTarget ? '#fed7aa' : '#bae6fd'};">
+                            <div style="margin-bottom: 12px;">
+                                <div>
+                                    <p class="text-sm font-bold" style="color: ${isPopupTarget ? '#9a3412' : '#0369a1'}; display: flex; align-items: center; gap: 8px; margin: 0;">
+                                        ${isPopupTarget ? '🚨' : '💡'} Suggerimento Chiamata APEX
+                                    </p>
+                                    <p class="text-xs" style="color: #64748b; margin: 2px 0 0 0;">Target: <strong>${targetForm || 'N.D.'}</strong> ${isPopupTarget ? '(Configurato come Popup)' : '(Navigazione Standard)'}</p>
+                                </div>
+                            </div>
+                            <div style="font-family: 'Fira Code', monospace; font-size: 11px;">
+                                <div style="margin-bottom: 8px; padding: 10px; border-radius: 6px; ${!isPopupTarget ? 'background: white; border: 2px solid #0ea5e9; color: #0369a1;' : 'opacity: 0.4; color: #64748b; border: 1px dashed #cbd5e1;'}">
+                                    <div class="mb-1" style="font-weight: bold;">// Caso 1: Standard (Target Normal)</div>
+                                    <div style="font-weight: ${!isPopupTarget ? '700' : '400'};">${snippet1}</div>
+                                </div>
+                                <div style="padding: 10px; border-radius: 6px; ${isPopupTarget ? 'background: white; border: 2px solid #f97316; color: #c2410c;' : 'opacity: 0.4; color: #64748b; border: 1px dashed #cbd5e1;'}">
+                                    <div class="mb-1" style="font-weight: bold;">// Caso 2: Popup / Modal (Target Modal)</div>
+                                    <div style="font-weight: ${isPopupTarget ? '700' : '400'};">${snippet2}</div>
+                                </div>
                             </div>
                         </div>
                       `;
@@ -734,6 +745,16 @@ function renderGroovyScripts(scripts, prefix) {
                       <div class="mb-2">
                           <p class="text-xs text-gray mb-1">Class: ${item.className} ${item.classType ? `(${item.classType})` : ''}</p>
                           <p class="text-xs text-gray mb-1">Type: Param List</p>
+                          ${
+                            item.formName
+                              ? `
+                            <div class="mb-2 p-2 bg-gray-50 rounded border border-gray-200" style="display: flex; gap: 15px; align-items: center;">
+                                <span class="text-xs"><strong>Destinazione:</strong> <span class="badge badge-blue" style="font-size: 11px;">${item.formName}</span></span>
+                                ${item.formVariant ? `<span class="text-xs"><strong>Variante:</strong> ${item.formVariant}</span>` : ''}
+                                ${item.formTarget ? `<span class="text-xs"><strong>Target:</strong> ${item.formTarget}</span>` : ''}
+                            </div>`
+                              : ''
+                          }
                           ${
                             item.params && item.params.length > 0
                               ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
