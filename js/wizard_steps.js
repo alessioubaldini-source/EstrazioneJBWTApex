@@ -175,6 +175,8 @@ const wizardSteps = [
             html += `<div class="flex items-center gap-2 mb-2"><span class="badge badge-blue">${btn.type}</span> <h4 class="font-bold">${btn.label || btn.name}</h4></div>`;
             if (btn.callFormName) html += `<p class="text-sm mb-2"><strong>CallForm:</strong> ${btn.callFormName}</p>`;
 
+            if (btn.type === 'callFormButton') html += renderCallFormHint(btn.callFormName);
+
             if (btn.params && btn.params.length > 0) {
               html += `<div class="text-sm mb-2"><strong>Params:</strong> ${btn.params.map((p) => `${p.name}=${p.alias}`).join(', ')}</div>`;
             }

@@ -30,13 +30,24 @@ function renderData(data) {
 
   const xmlCode = currentFilename.replace(/\.xml$/i, '');
 
-  if (data.description) {
-    html += `
-              <div class="description-box">
-                  <h2>${xmlCode} - ${data.description}</h2>
-              </div>
-          `;
+  const isPopupMode = (appSettings.popupForms || []).some(pf => pf.toUpperCase() === xmlCode.toUpperCase());
+  const modeBadge = isPopupMode 
+    ? `<span class="badge" style="background-color: #f97316; color: white; font-size: 11px; margin-left: 10px; vertical-align: middle; padding: 2px 8px; border-radius: 4px; font-weight: bold;">POPUP</span>`
+    : `<span class="badge" style="background-color: #0ea5e9; color: white; font-size: 11px; margin-left: 10px; vertical-align: middle; padding: 2px 8px; border-radius: 4px; font-weight: bold;">PAGE</span>`;
+
+  // Aggiorna il nome del file nell'header aggiungendo il badge
+  const fileNameDisplay = document.getElementById('currentFileNameDisplay');
+  if (fileNameDisplay) {
+    fileNameDisplay.innerHTML = `${currentFilename} ${modeBadge}`;
   }
+
+  const descriptionHtml = data.description ? `<span style="font-weight: normal; margin-left: 10px; color: #4b5563;">- ${data.description}</span>` : '';
+
+  html += `
+            <div class="description-box">
+                <h2 style="display: flex; align-items: center; flex-wrap: wrap;">${xmlCode}${descriptionHtml}</h2>
+            </div>
+        `;
 
   if (data.moduleInfo) {
     html += `
@@ -422,6 +433,7 @@ function renderData(data) {
                               <p class="text-sm mb-1"><span class="info-label">Name:</span> ${btn.name} ${btn.label ? `(${btn.label})` : ''}</p>
                               <p class="text-sm mb-1"><span class="info-label">Order:</span> ${btn.order}</p>
                               ${btn.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${btn.callFormName}</p>` : ''}
+                              ${btn.type === 'callFormButton' ? renderCallFormHint(btn.callFormName) : ''}
                               ${
                                 btn.params && btn.params.length > 0
                                   ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
@@ -472,6 +484,7 @@ function renderData(data) {
                               <p class="text-sm mb-1"><span class="info-label">Name:</span> ${btn.name} ${btn.label ? `(${btn.label})` : ''}</p>
                               <p class="text-sm mb-1"><span class="info-label">Order:</span> ${btn.order}</p>
                               ${btn.callFormName ? `<p class="text-sm mb-1"><span class="info-label">CallForm:</span> ${btn.callFormName}</p>` : ''}
+                              ${btn.type === 'callFormButton' ? renderCallFormHint(btn.callFormName) : ''}
                               ${
                                 btn.params && btn.params.length > 0
                                   ? `<div class="params-box" style="margin-top: 8px; margin-bottom: 8px;">
@@ -671,6 +684,7 @@ function renderCodeBlock(code, id, lang = 'sql') {
 }
 
 function renderGroovyScripts(scripts, prefix) {
+  console.log(`[DEBUG] renderGroovyScripts per prefix: ${prefix}`, scripts);
   if (!scripts || scripts.length === 0) return '';
 
   const content = scripts
@@ -711,35 +725,7 @@ function renderGroovyScripts(scripts, prefix) {
                   if (item.type === 'paramsList') {
                     let callFormHelp = '';
                     if (item.classType === 'CallFormAction' || item.className === 'CallFormAction') {
-                      const popupList = appSettings.popupForms || [];
-                      const targetForm = (item.formName || '').toUpperCase();
-                      const isPopupTarget = targetForm && popupList.some((pf) => pf.toUpperCase() === targetForm);
-
-                      const snippet1 = `ApexUtils.callForm(PAGE_ID, { Pxx_ID: 10, ... });`;
-                      const snippet2 = `ApexUtils.callForm(PAGE_ID, { Pxx_ID: 10, ... }, { mode: 'same' });`;
-
-                      callFormHelp = `
-                        <div class="mt-4 p-4" style="background-color: ${isPopupTarget ? '#fff7ed' : '#f0f9ff'}; border-left: 6px solid ${isPopupTarget ? '#f97316' : '#0ea5e9'}; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid ${isPopupTarget ? '#fed7aa' : '#bae6fd'};">
-                            <div style="margin-bottom: 12px;">
-                                <div>
-                                    <p class="text-sm font-bold" style="color: ${isPopupTarget ? '#9a3412' : '#0369a1'}; display: flex; align-items: center; gap: 8px; margin: 0;">
-                                        ${isPopupTarget ? '🚨' : '💡'} Suggerimento Chiamata APEX
-                                    </p>
-                                    <p class="text-xs" style="color: #64748b; margin: 2px 0 0 0;">Target: <strong>${targetForm || 'N.D.'}</strong> ${isPopupTarget ? '(Configurato come Popup)' : '(Navigazione Standard)'}</p>
-                                </div>
-                            </div>
-                            <div style="font-family: 'Fira Code', monospace; font-size: 11px;">
-                                <div style="margin-bottom: 8px; padding: 10px; border-radius: 6px; ${!isPopupTarget ? 'background: white; border: 2px solid #0ea5e9; color: #0369a1;' : 'opacity: 0.4; color: #64748b; border: 1px dashed #cbd5e1;'}">
-                                    <div class="mb-1" style="font-weight: bold;">// Caso 1: Standard (Target Normal)</div>
-                                    <div style="font-weight: ${!isPopupTarget ? '700' : '400'};">${snippet1}</div>
-                                </div>
-                                <div style="padding: 10px; border-radius: 6px; ${isPopupTarget ? 'background: white; border: 2px solid #f97316; color: #c2410c;' : 'opacity: 0.4; color: #64748b; border: 1px dashed #cbd5e1;'}">
-                                    <div class="mb-1" style="font-weight: bold;">// Caso 2: Popup / Modal (Target Modal)</div>
-                                    <div style="font-weight: ${isPopupTarget ? '700' : '400'};">${snippet2}</div>
-                                </div>
-                            </div>
-                        </div>
-                      `;
+                      callFormHelp = renderCallFormHint(item.formName);
                     }
                     return `
                       <div class="mb-2">
@@ -935,4 +921,46 @@ function renderLayoutMap(data) {
 
   html += `</div>`;
   return html;
+}
+
+/**
+ * Genera il blocco HTML con il suggerimento per la chiamata ApexUtils.callForm.
+ * @param {string} formName Il nome del form di destinazione
+ * @returns {string} HTML del suggerimento
+ */
+function renderCallFormHint(formName) {
+  const targetForm = (formName || '').toUpperCase();
+  if (!targetForm) return '';
+
+  const popupList = appSettings.popupForms || [];
+  const isPopupTarget = popupList.some((pf) => pf.toUpperCase() === targetForm);
+
+  // Debug per tracciare il matching
+  console.log(`[DEBUG] renderCallFormHint - Target: ${targetForm}, isPopup: ${isPopupTarget}`);
+
+  const snippet1 = `ApexUtils.callForm(PAGE_ID, { Pxx_ID: 10, ... });`;
+  const snippet2 = `ApexUtils.callForm(PAGE_ID, { Pxx_ID: 10, ... }, { mode: 'same' });`;
+
+  return `
+    <div class="mt-4 p-4" style="background-color: ${isPopupTarget ? '#fff7ed' : '#f0f9ff'}; border-left: 6px solid ${isPopupTarget ? '#f97316' : '#0ea5e9'}; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid ${isPopupTarget ? '#fed7aa' : '#bae6fd'};">
+        <div style="margin-bottom: 12px;">
+            <div>
+                <p class="text-sm font-bold" style="color: ${isPopupTarget ? '#9a3412' : '#0369a1'}; display: flex; align-items: center; gap: 8px; margin: 0;">
+                    ${isPopupTarget ? '🚨' : '💡'} Suggerimento Chiamata APEX
+                </p>
+                <p class="text-xs" style="color: #64748b; margin: 2px 0 0 0;">Target: <strong>${targetForm}</strong> ${isPopupTarget ? '(Configurato come Popup)' : '(Navigazione Standard)'}</p>
+            </div>
+        </div>
+        <div style="font-family: 'Fira Code', monospace; font-size: 11px;">
+            <div style="margin-bottom: 8px; padding: 10px; border-radius: 6px; ${!isPopupTarget ? 'background: white; border: 2px solid #0ea5e9; color: #0369a1;' : 'opacity: 0.4; color: #64748b; border: 1px dashed #cbd5e1;'}">
+                <div class="mb-1" style="font-weight: bold;">// Caso 1: Standard (Target Normal)</div>
+                <div style="font-weight: ${!isPopupTarget ? '700' : '400'};">${snippet1}</div>
+            </div>
+            <div style="padding: 10px; border-radius: 6px; ${isPopupTarget ? 'background: white; border: 2px solid #f97316; color: #c2410c;' : 'opacity: 0.4; color: #64748b; border: 1px dashed #cbd5e1;'}">
+                <div class="mb-1" style="font-weight: bold;">// Caso 2: Popup / Modal (Target Modal)</div>
+                <div style="font-weight: ${isPopupTarget ? '700' : '400'};">${snippet2}</div>
+            </div>
+        </div>
+    </div>
+  `;
 }
