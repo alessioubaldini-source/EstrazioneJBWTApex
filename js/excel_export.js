@@ -4,28 +4,34 @@ const TEST_TEMPLATES = {
     FORM_LOAD: {
       OBJ: 'Caricamento Form',
       TYPE: 'Inizializzazione',
-      SCENARIO: 'Aprire la form e verificare il completamento del caricamento iniziale: assenza di errori JS, esecuzione degli script WNFI e popolamento dei campi/grid iniziali',
-      EXPECTED: 'La form si carica correttamente: nessun errore in console, tutti gli script WNFI sono eseguiti, i campi con valori di default risultano già valorizzati e le grid iniziali sono popolate',
+      SCENARIO:
+        'Aprire la form e verificare il completamento del caricamento iniziale: assenza di errori JS, esecuzione degli script WNFI e popolamento dei campi/grid iniziali',
+      EXPECTED:
+        'La form si carica correttamente: nessun errore in console, tutti gli script WNFI sono eseguiti, i campi con valori di default risultano già valorizzati e le grid iniziali sono popolate',
       PRIO: 'Programmatore e Analista',
     },
     PARAM_RESET: {
       OBJ: 'Parametri Form',
       TYPE: 'Stato',
-      SCENARIO: 'Verificare il ripristino/stato iniziale, premendo il Reset dei Filtri (se presenti) e il reimposta dei grid',
-      EXPECTED: 'I parametri assumono i valori di default previsti e si comportano correttamente come in fase di apertura',
+      SCENARIO:
+        'Verificare il ripristino/stato iniziale, premendo il Reset dei Filtri (se presenti) e il reimposta dei grid',
+      EXPECTED:
+        'I parametri assumono i valori di default previsti e si comportano correttamente come in fase di apertura',
       PRIO: 'Programmatore',
     },
     PAGE_NAME: {
       OBJ: 'Nome Pagina (Tab)',
       TYPE: 'UI / Standard',
-      SCENARIO: 'Verificare che il titolo della pagina visualizzato nel tab del browser sia corretto',
+      SCENARIO:
+        'Verificare che il titolo della pagina visualizzato nel tab del browser sia corretto',
       EXPECTED: 'Il titolo corrisponde alla descrizione della maschera ed è conforme agli standard',
       PRIO: 'Programmatore',
     },
     MASK_ALIAS: {
       OBJ: 'Alias Maschera: {0}',
       TYPE: 'Configurazione / jBWT',
-      SCENARIO: "Verificare che l'alias della pagina sia impostato correttamente per permettere la chiamata da jBWT",
+      SCENARIO:
+        "Verificare che l'alias della pagina sia impostato correttamente per permettere la chiamata da jBWT",
       EXPECTED: 'L\'alias "{0}" è configurato; la maschera è raggiungibile',
       PRIO: 'Programmatore',
     },
@@ -35,13 +41,15 @@ const TEST_TEMPLATES = {
       OBJ: 'Grid – Inserimento Record',
       TYPE: 'Permessi / Funzionalità',
       SCENARIO: 'Compilare tutti i campi obbligatori e cliccare Salva per inserire un nuovo record',
-      EXPECTED: 'Il record viene salvato correttamente; la riga appare nella grid con i dati inseriti; nessun messaggio di errore',
+      EXPECTED:
+        'Il record viene salvato correttamente; la riga appare nella grid con i dati inseriti; nessun messaggio di errore',
       PRIO: 'Programmatore',
     },
     INSERT_KO: {
       OBJ: 'Grid – Inserimento Bloccato',
       TYPE: 'Permessi',
-      SCENARIO: 'Verificare che il pulsante di inserimento non sia presente o sia disabilitato nella toolbar della grid',
+      SCENARIO:
+        'Verificare che il pulsante di inserimento non sia presente o sia disabilitato nella toolbar della grid',
       EXPECTED: `Il pulsante di inserimento è assente; non è possibile aggiungere nuovi record dall'utente corrente`,
       PRIO: 'Programmatore',
     },
@@ -49,35 +57,43 @@ const TEST_TEMPLATES = {
       OBJ: 'Grid – Modifica Record',
       TYPE: 'Permessi / Funzionalità',
       SCENARIO: 'Selezionare un record esistente, modificare almeno un campo editabile e salvare',
-      EXPECTED: 'La modifica viene salvata correttamente; i valori aggiornati sono visibili nella grid; nessun errore di validazione o di permesso',
+      EXPECTED:
+        'La modifica viene salvata correttamente; i valori aggiornati sono visibili nella grid; nessun errore di validazione o di permesso',
       PRIO: 'Programmatore',
     },
     UPDATE_KO: {
       OBJ: 'Grid – Modifica Bloccata',
       TYPE: 'Permessi',
-      SCENARIO: 'Tentare di modificare un campo nella grid; verificare che tutti i campi risultino in sola lettura',
-      EXPECTED: 'I campi sono non modificabili; il pulsante Salva è assente o disabilitato; nessuna modifica può essere apportata',
+      SCENARIO:
+        'Tentare di modificare un campo nella grid; verificare che tutti i campi risultino in sola lettura',
+      EXPECTED:
+        'I campi sono non modificabili; il pulsante Salva è assente o disabilitato; nessuna modifica può essere apportata',
       PRIO: 'Programmatore',
     },
     DELETE_OK: {
       OBJ: 'Grid – Cancellazione Record',
       TYPE: 'Permessi / Funzionalità',
-      SCENARIO: 'Selezionare un record non referenziato da altri dati e procedere con la cancellazione',
-      EXPECTED: 'Il record viene eliminato; scompare dalla grid dopo il salvataggio; nessun errore di integrità referenziale',
+      SCENARIO:
+        'Selezionare un record non referenziato da altri dati e procedere con la cancellazione',
+      EXPECTED:
+        'Il record viene eliminato; scompare dalla grid dopo il salvataggio; nessun errore di integrità referenziale',
       PRIO: 'Programmatore',
     },
     DELETE_KO: {
       OBJ: 'Grid – Cancellazione Bloccata',
       TYPE: 'Permessi',
-      SCENARIO: 'Verificare che il pulsante di cancellazione non sia presente o sia disabilitato nella toolbar della grid',
+      SCENARIO:
+        'Verificare che il pulsante di cancellazione non sia presente o sia disabilitato nella toolbar della grid',
       EXPECTED: 'Il pulsante di cancellazione è assente; non è possibile eliminare record',
       PRIO: 'Programmatore',
     },
     FIELD_MANDATORY: {
       OBJ: 'Campo obbligatorio: {0}',
       TYPE: 'Validazione',
-      SCENARIO: 'Lasciare vuoto il campo "{0}", compilare tutti gli altri campi obbligatori e tentare il salvataggio',
-      EXPECTED: 'Il sistema blocca il salvataggio e segnala con errore che il campo "{0}" è obbligatorio',
+      SCENARIO:
+        'Lasciare vuoto il campo "{0}", compilare tutti gli altri campi obbligatori e tentare il salvataggio',
+      EXPECTED:
+        'Il sistema blocca il salvataggio e segnala con errore che il campo "{0}" è obbligatorio',
       PRIO: 'Programmatore',
     },
     FIELD_LENGTH: {
@@ -91,13 +107,15 @@ const TEST_TEMPLATES = {
       OBJ: 'Campo sola lettura: {0}',
       TYPE: 'UI / Permessi',
       SCENARIO: 'Tentare di modificare il valore del campo "{0}" in modalità edit della grid',
-      EXPECTED: 'Il campo "{0}" risulta non modificabile (read-only o disabilitato); nessuna modifica viene accettata',
+      EXPECTED:
+        'Il campo "{0}" risulta non modificabile (read-only o disabilitato); nessuna modifica viene accettata',
       PRIO: 'Programmatore',
     },
     FIELD_REGEX: {
       OBJ: 'Regex campo: {0}',
       TYPE: 'Validazione Formato',
-      SCENARIO: 'Inserire nel campo "{0}" un valore non conforme alla regex ({1}) — es. caratteri non ammessi o formato errato',
+      SCENARIO:
+        'Inserire nel campo "{0}" un valore non conforme alla regex ({1}) — es. caratteri non ammessi o formato errato',
       EXPECTED: `Il sistema mostra l'errore di validazione: "{2}"; il salvataggio è bloccato finché il valore non è corretto`,
       PRIO: 'Alta',
     },
@@ -105,27 +123,32 @@ const TEST_TEMPLATES = {
       OBJ: 'Controlli al Salvataggio',
       TYPE: 'Business Logic',
       SCENARIO: 'Creare le condizioni di dati che violano la regola e procedere al salvataggio',
-      EXPECTED: 'Il salvataggio viene bloccato e viene mostrato il messaggio: "{2}"; i dati non vengono salvati',
+      EXPECTED:
+        'Il salvataggio viene bloccato e viene mostrato il messaggio: "{2}"; i dati non vengono salvati',
       PRIO: 'Programmatore',
     },
     LOGIC_WECR: {
       OBJ: 'Controllo validazione riga',
       TYPE: 'Validazione (WECR)',
-      SCENARIO: 'Modificare i valori della riga in modo da violare il controllo "{2}" e navigare alla riga successiva o salvare',
-      EXPECTED: 'Il sistema blocca la navigazione/salvataggio e mostra il messaggio a video evidenziando i campi da correggere',
+      SCENARIO:
+        'Modificare i valori della riga in modo da violare il controllo "{2}" e navigare alla riga successiva o salvare',
+      EXPECTED:
+        'Il sistema blocca la navigazione/salvataggio e mostra il messaggio a video evidenziando i campi da correggere',
       PRIO: 'Alta',
     },
     LOGIC_WFEV: {
       OBJ: 'Validazione campo: {1}',
       TYPE: 'Validazione (WFEV)',
-      SCENARIO: 'Nel campo "{1}" inserire un valore in modo da violare il controllo "{2}" e uscire dal record',
+      SCENARIO:
+        'Nel campo "{1}" inserire un valore in modo da violare il controllo "{2}" e uscire dal record',
       EXPECTED: `Il sistema segnala l'errore e il campo viene evidenziato`,
       PRIO: 'Alta',
     },
     LOGIC_WCV: {
       OBJ: 'Validazione alla modifica: {1}',
       TYPE: 'Validazione (WCV)',
-      SCENARIO: 'Modificare il valore del campo "{1}" in modo da violare il controllo "{2}" e uscire dal record',
+      SCENARIO:
+        'Modificare il valore del campo "{1}" in modo da violare il controllo "{2}" e uscire dal record',
       EXPECTED: `Il sistema reagisce alla modifica eseguendo i controlli o ricalcoli previsti; in caso di errore mostra l'errore e il campo viene evidenziato`,
       PRIO: 'Programmatore',
     },
@@ -154,21 +177,25 @@ const TEST_TEMPLATES = {
       OBJ: 'LOV: {0}',
       TYPE: 'UI / Dati',
       SCENARIO: 'Aprire la lista valori "{1}" tramite il relativo campo o pulsante di ricerca',
-      EXPECTED: 'La lista si apre correttamente, è popolata con i valori attesi e permette la selezione; la voce scelta viene riportata nel campo',
+      EXPECTED:
+        'La lista si apre correttamente, è popolata con i valori attesi e permette la selezione; la voce scelta viene riportata nel campo',
       PRIO: 'Programmatore',
     },
     COMBO_LOAD: {
       OBJ: 'Combobox: {0}',
       TYPE: 'UI / Dati',
       SCENARIO: 'Espandere la tendina "{1}" e verificare le opzioni disponibili',
-      EXPECTED: 'Tutte le opzioni previste sono presenti e selezionabili; la selezione aggiorna correttamente il valore del campo',
+      EXPECTED:
+        'Tutte le opzioni previste sono presenti e selezionabili; la selezione aggiorna correttamente il valore del campo',
       PRIO: 'Programmatore',
     },
     LOV_CONFIG: {
       OBJ: 'Configurazione LOV: {0}',
       TYPE: 'UI / UX',
-      SCENARIO: 'Verificare impostazioni: "Search as you type" disabilitato, presenza della lente di ricerca, "Display Null Value" attivo con carattere "-"',
-      EXPECTED: 'La ricerca non parte in automatico; la lente è visibile; i valori nulli sono rappresentati correttamente',
+      SCENARIO:
+        'Verificare impostazioni: "Search as you type" disabilitato, presenza della lente di ricerca, "Display Null Value" attivo con carattere "-"',
+      EXPECTED:
+        'La ricerca non parte in automatico; la lente è visibile; i valori nulli sono rappresentati correttamente',
       PRIO: 'Programmatore',
     },
     STD_TEMPLATE: {
@@ -181,22 +208,27 @@ const TEST_TEMPLATES = {
     PK_CHECK: {
       OBJ: 'Verifica Primary Key',
       TYPE: 'DML / Integrità',
-      SCENARIO: 'Controllare che nella configurazione della Grid sia definita almeno una colonna come Primary Key',
-      EXPECTED: 'PK presente; il posizionamento del record e le operazioni di salvataggio funzionano correttamente',
+      SCENARIO:
+        'Controllare che nella configurazione della Grid sia definita almeno una colonna come Primary Key',
+      EXPECTED:
+        'PK presente; il posizionamento del record e le operazioni di salvataggio funzionano correttamente',
       PRIO: 'Programmatore',
     },
     EXPORT_CHECK: {
       OBJ: 'Export Excel/PDF',
       TYPE: 'Funzionalità',
-      SCENARIO: "Eseguire un'estrazione dati e verificare che il foglio/file riporti l'alias corretto",
+      SCENARIO:
+        "Eseguire un'estrazione dati e verificare che il foglio/file riporti l'alias corretto",
       EXPECTED: "L'export avviene con successo e il file prodotto è nominato correttamente",
       PRIO: 'Programmatore',
     },
     LAYOUT_CONFIG: {
       OBJ: 'Layout e Report Primario',
       TYPE: 'Configurazione UI',
-      SCENARIO: 'Aggiustare larghezze, ordinamento e filtri di default; salvare la configurazione come Report Primario',
-      EXPECTED: "Al caricamento della pagina, la Grid si presenta con il layout e l'ordinamento predefinito desiderato",
+      SCENARIO:
+        'Aggiustare larghezze, ordinamento e filtri di default; salvare la configurazione come Report Primario',
+      EXPECTED:
+        "Al caricamento della pagina, la Grid si presenta con il layout e l'ordinamento predefinito desiderato",
       PRIO: 'Programmatore',
     },
     FIELD_UPPER: {
@@ -209,8 +241,10 @@ const TEST_TEMPLATES = {
     FILTER_LOGIC: {
       OBJ: 'Filtraggio Grid',
       TYPE: 'Funzionalità / Query',
-      SCENARIO: 'Impostare filtri su uno o più criteri disponibili nella grid ed eseguire la ricerca; ripetere con combinazioni di filtri',
-      EXPECTED: 'I risultati visualizzati corrispondono esattamente ai criteri impostati; la query applica correttamente tutti i filtri e la grid non mostra record estranei alla selezione',
+      SCENARIO:
+        'Impostare filtri su uno o più criteri disponibili nella grid ed eseguire la ricerca; ripetere con combinazioni di filtri',
+      EXPECTED:
+        'I risultati visualizzati corrispondono esattamente ai criteri impostati; la query applica correttamente tutti i filtri e la grid non mostra record estranei alla selezione',
       PRIO: 'Programmatore',
     },
   },
@@ -218,9 +252,18 @@ const TEST_TEMPLATES = {
     TITLE: 'CONSIGLI SU RISOLUZIONE DI PROBLEMI',
     HEADERS: ['Problema', 'Soluzione/Consiglio'],
     ITEMS: [
-      ['Session State Protection', 'Verificare che i Page Item hidden non abbiano "Value Protected" su Yes '],
-      ['Grid non salva', 'Controllare che la colonna Primary Key sia impostata come "Primary Key" nella Grid.'],
-      ['Non mostra dati (lov, combo, grid vuota)', 'Verificare query e assicurarsi di aver inserito i Page Item in "Page Items to Submit".'],
+      [
+        'Session State Protection',
+        'Verificare che i Page Item hidden non abbiano "Value Protected" su Yes ',
+      ],
+      [
+        'Grid non salva',
+        'Controllare che la colonna Primary Key sia impostata come "Primary Key" nella Grid.',
+      ],
+      [
+        'Non mostra dati (lov, combo, grid vuota)',
+        'Verificare query e assicurarsi di aver inserito i Page Item in "Page Items to Submit".',
+      ],
     ],
   },
 };
@@ -248,7 +291,11 @@ const setBoldHeaders = (ws) => {
     const val = String(firstCell.v);
     // Applica bold se: riga 0 (header tabella), oppure testo tutto maiuscolo (titolo sezione),
     // oppure se inizia con parole chiave di intestazione note.
-    if (R === 0 || val === val.toUpperCase() || ['Name', 'Type', 'Operation', 'Event Name', 'Problema'].includes(val)) {
+    if (
+      R === 0 ||
+      val === val.toUpperCase() ||
+      ['Name', 'Type', 'Operation', 'Event Name', 'Problema'].includes(val)
+    ) {
       for (let C = range.s.c; C <= range.e.c; ++C) {
         const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
         if (!ws[cellRef]) continue;
@@ -266,11 +313,17 @@ function downloadExcel() {
   const wb = XLSX.utils.book_new();
 
   // 1. Foglio WNFI (When New Form Instance)
-  if (currentData.whenNewFormInstance.length > 0 || (currentData.formParams && currentData.formParams.length > 0)) {
+  if (
+    currentData.whenNewFormInstance.length > 0 ||
+    (currentData.formParams && currentData.formParams.length > 0)
+  ) {
     const wnfiRows = [];
     if (currentData.moduleInfo) {
       wnfiRows.push(['MODULE INFO']);
-      wnfiRows.push([`Range Modulo ${currentData.moduleInfo.module}`, currentData.moduleInfo.range]);
+      wnfiRows.push([
+        `Range Modulo ${currentData.moduleInfo.module}`,
+        currentData.moduleInfo.range,
+      ]);
       wnfiRows.push([]);
     }
 
@@ -300,13 +353,31 @@ function downloadExcel() {
         wnfiRows.push(['Action', 'Type', 'Class', 'Fail Msg', 'Code']);
         currentData.whenNewFormInstanceGroovy.forEach((action) => {
           if (action.openPopup && action.openPopup.name) {
-            wnfiRows.push([action.actionName, 'Open Popup', '', '', `Name: ${action.openPopup.name}`]);
+            wnfiRows.push([
+              action.actionName,
+              'Open Popup',
+              '',
+              '',
+              `Name: ${action.openPopup.name}`,
+            ]);
           }
           action.classes.forEach((item) => {
             if (item.type === 'groovy') {
-              wnfiRows.push([action.actionName, 'Groovy', item.className, item.failMessage || '', item.script]);
+              wnfiRows.push([
+                action.actionName,
+                'Groovy',
+                item.className,
+                item.failMessage || '',
+                item.script,
+              ]);
             } else if (item.type === 'sql') {
-              wnfiRows.push([action.actionName, 'SQL', item.className, item.failMessage || '', item.sql]);
+              wnfiRows.push([
+                action.actionName,
+                'SQL',
+                item.className,
+                item.failMessage || '',
+                item.sql,
+              ]);
             } else if (item.type === 'paramsList') {
               const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('\n');
               wnfiRows.push([action.actionName, 'Params List', item.className, '', paramsText]);
@@ -348,7 +419,9 @@ function downloadExcel() {
       });
     }
 
-    const filteredGlobalActions = currentData.globalActions.filter((action) => !usedActions.has(action.actionName));
+    const filteredGlobalActions = currentData.globalActions.filter(
+      (action) => !usedActions.has(action.actionName),
+    );
 
     if (filteredGlobalActions.length > 0) {
       const gaRows = [];
@@ -361,9 +434,21 @@ function downloadExcel() {
         }
         action.classes.forEach((item) => {
           if (item.type === 'groovy') {
-            gaRows.push([action.actionName, 'Groovy', item.className, item.failMessage || '', item.script]);
+            gaRows.push([
+              action.actionName,
+              'Groovy',
+              item.className,
+              item.failMessage || '',
+              item.script,
+            ]);
           } else if (item.type === 'sql') {
-            gaRows.push([action.actionName, 'SQL', item.className, item.failMessage || '', item.sql]);
+            gaRows.push([
+              action.actionName,
+              'SQL',
+              item.className,
+              item.failMessage || '',
+              item.sql,
+            ]);
           } else if (item.type === 'paramsList') {
             const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('\n');
             gaRows.push([action.actionName, 'Params List', item.className, '', paramsText]);
@@ -387,7 +472,9 @@ function downloadExcel() {
   const popupGridNames = currentData.popups ? currentData.popups.flatMap((p) => p.grids) : [];
 
   // 1. Standalone grids
-  const standaloneGrids = currentData.grids.filter((g) => !g.tab && !popupGridNames.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
+  const standaloneGrids = currentData.grids
+    .filter((g) => !g.tab && !popupGridNames.includes(g.name))
+    .sort((a, b) => getOrder(a) - getOrder(b));
 
   // 2. Tab grids
   const tabs = {};
@@ -411,7 +498,9 @@ function downloadExcel() {
   });
 
   // 3. Popup grids
-  const popupGrids = currentData.grids.filter((g) => popupGridNames.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
+  const popupGrids = currentData.grids
+    .filter((g) => popupGridNames.includes(g.name))
+    .sort((a, b) => getOrder(a) - getOrder(b));
 
   const sortedGrids = [...standaloneGrids, ...tabGrids, ...popupGrids];
   sortedGrids.forEach((grid) => {
@@ -423,17 +512,40 @@ function downloadExcel() {
     rows.push(['Type', grid.type || '']);
     rows.push(['Label', grid.label]);
     rows.push(['Tab', grid.tab ? `${grid.tab.label} (${grid.tab.name})` : '']);
-    rows.push(['Permissions', `I:${grid.insertAllowed} U:${grid.updateAllowed} D:${grid.deleteAllowed}`]);
+    rows.push([
+      'Permissions',
+      `I:${grid.insertAllowed} U:${grid.updateAllowed} D:${grid.deleteAllowed}`,
+    ]);
     rows.push([]); // Spacer
 
     // FIELDS
     if (grid.fields && grid.fields.length > 0) {
       rows.push(['FIELDS']);
-      rows.push(['Name', 'Label', 'Type', 'Length', 'Mandatory', 'Editable', 'Hidden', 'Regex', 'Regex Msg']);
+      rows.push([
+        'Name',
+        'Label',
+        'Type',
+        'Length',
+        'Mandatory',
+        'Editable',
+        'Hidden',
+        'Regex',
+        'Regex Msg',
+      ]);
       grid.fields.forEach((f) => {
         const regex = f.validRegex ? f.validRegex.regex : '';
         const regexMsg = f.validRegex ? f.validRegex.message : '';
-        rows.push([f.name, f.label, f.tag, f.length, f.isMandatory, f.isEditable, f.isHidden, regex, regexMsg]);
+        rows.push([
+          f.name,
+          f.label,
+          f.tag,
+          f.length,
+          f.isMandatory,
+          f.isEditable,
+          f.isHidden,
+          regex,
+          regexMsg,
+        ]);
       });
       rows.push([]);
     }
@@ -519,7 +631,9 @@ function downloadExcel() {
               if (item.type === 'groovy') parts.push(`[Groovy] ${item.script}`);
               if (item.type === 'sql') parts.push(`[SQL] ${item.sql}`);
               if (item.type === 'paramsList') {
-                const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('; ');
+                const paramsText = (item.params || [])
+                  .map((p) => `${p.name}=${p.alias}`)
+                  .join('; ');
                 parts.push(`[Params] ${paramsText}`);
               }
             });
@@ -547,15 +661,27 @@ function downloadExcel() {
               if (item.type === 'groovy') parts.push(`[Groovy] ${item.script}`);
               if (item.type === 'sql') parts.push(`[SQL] ${item.sql}`);
               if (item.type === 'paramsList') {
-                const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('; ');
+                const paramsText = (item.params || [])
+                  .map((p) => `${p.name}=${p.alias}`)
+                  .join('; ');
                 parts.push(`[Params] ${paramsText}`);
               }
             });
             return parts.join('\n');
           })
           .join('\n---\n');
-        const params = (btn.params || []).map((p) => `${p.name || ''}${p.alias ? ` (${p.alias})` : ''}`).join('\n');
-        rows.push([btn.type, btn.name, btn.label, btn.callFormName, params, btn.actionRef.join(', '), scripts]);
+        const params = (btn.params || [])
+          .map((p) => `${p.name || ''}${p.alias ? ` (${p.alias})` : ''}`)
+          .join('\n');
+        rows.push([
+          btn.type,
+          btn.name,
+          btn.label,
+          btn.callFormName,
+          params,
+          btn.actionRef.join(', '),
+          scripts,
+        ]);
       });
       rows.push([]);
     }
@@ -575,15 +701,27 @@ function downloadExcel() {
               if (item.type === 'groovy') parts.push(`[Groovy] ${item.script}`);
               if (item.type === 'sql') parts.push(`[SQL] ${item.sql}`);
               if (item.type === 'paramsList') {
-                const paramsText = (item.params || []).map((p) => `${p.name}=${p.alias}`).join('; ');
+                const paramsText = (item.params || [])
+                  .map((p) => `${p.name}=${p.alias}`)
+                  .join('; ');
                 parts.push(`[Params] ${paramsText}`);
               }
             });
             return parts.join('\n');
           })
           .join('\n---\n');
-        const params = (btn.params || []).map((p) => `${p.name || ''}${p.alias ? ` (${p.alias})` : ''}`).join('\n');
-        rows.push([btn.type, btn.name, btn.label, btn.callFormName, params, btn.actionRef.join(', '), scripts]);
+        const params = (btn.params || [])
+          .map((p) => `${p.name || ''}${p.alias ? ` (${p.alias})` : ''}`)
+          .join('\n');
+        rows.push([
+          btn.type,
+          btn.name,
+          btn.label,
+          btn.callFormName,
+          params,
+          btn.actionRef.join(', '),
+          scripts,
+        ]);
       });
       rows.push([]);
     }
@@ -591,7 +729,15 @@ function downloadExcel() {
     const ws = XLSX.utils.aoa_to_sheet(rows);
 
     setBoldHeaders(ws);
-    ws['!cols'] = [{ wch: 20 }, { wch: 30 }, { wch: 50 }, { wch: 30 }, { wch: 40 }, { wch: 30 }, { wch: 50 }];
+    ws['!cols'] = [
+      { wch: 20 },
+      { wch: 30 },
+      { wch: 50 },
+      { wch: 30 },
+      { wch: 40 },
+      { wch: 30 },
+      { wch: 50 },
+    ];
 
     // Nome foglio (max 31 caratteri e univoco)
     let sheetName = grid.name.replace(/[\[\]\*\/\\?]/g, '');
@@ -612,6 +758,69 @@ function downloadExcel() {
   XLSX.writeFile(wb, `${docTitle}.xlsx`);
 }
 
+function downloadJSON() {
+  if (!currentData) return;
+
+  // 1. Calcoliamo le "Global Actions" non utilizzate (come nel file Excel)
+  const usedActions = new Set();
+
+  if (currentData.whenNewFormInstance) {
+    currentData.whenNewFormInstance.forEach((a) => usedActions.add(a));
+  }
+
+  if (currentData.grids) {
+    currentData.grids.forEach((grid) => {
+      if (grid.events) {
+        grid.events.forEach((evt) => {
+          if (evt.actionRefs) evt.actionRefs.forEach((a) => usedActions.add(a));
+        });
+      }
+      if (grid.topToolbarButtons) {
+        grid.topToolbarButtons.forEach((btn) => {
+          if (btn.actionRef) btn.actionRef.forEach((a) => usedActions.add(a));
+        });
+      }
+      if (grid.bottomToolbarButtons) {
+        grid.bottomToolbarButtons.forEach((btn) => {
+          if (btn.actionRef) btn.actionRef.forEach((a) => usedActions.add(a));
+        });
+      }
+    });
+  }
+
+  // Creiamo un clone dell'oggetto originale per non sporcare currentData
+  const exportData = {
+    ...currentData,
+    // Aggiungiamo il dato filtrato che prima mettevamo nel foglio Excel dedicato
+    unusedGlobalActions: (currentData.globalActions || []).filter(
+      (action) => !usedActions.has(action.actionName),
+    ),
+  };
+
+  // 2. Convertiamo l'oggetto in una stringa JSON formattata (indentazione a 2 spazi)
+  const jsonString = JSON.stringify(exportData, null, 2);
+
+  // 3. Creiamo un Blob con il contenuto JSON
+  const blob = new Blob([jsonString], { type: 'application/json' });
+
+  // 4. Creiamo un URL temporaneo per il Blob
+  const url = URL.createObjectURL(blob);
+
+  // 5. Creiamo un elemento <a> invisibile per innescare il download
+  const a = document.createElement('a');
+  a.href = url;
+
+  // Otteniamo il nome del file (sostituendo .xml con .json)
+  const docTitle = currentFilename ? currentFilename.replace(/\.xml$/i, '') : 'export';
+  a.download = `${docTitle}.json`;
+
+  // 6. Aggiungiamo al DOM, clicchiamo e rimuoviamo (pulizia)
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // Funzione Export Test Cases
 function downloadTestCases() {
   if (!currentData) return;
@@ -620,13 +829,32 @@ function downloadTestCases() {
   const rows = [];
 
   // Intestazioni
-  const headers = ['ID', 'Area/Grid', 'Oggetto', 'Tipo Test', 'Test', 'Risultato Atteso', 'Codice Riferimento', 'Esito (OK/KO)', 'Note', 'Esito (OK/KO) post correzione'];
+  const headers = [
+    'ID',
+    'Area/Grid',
+    'Oggetto',
+    'Tipo Test',
+    'Test',
+    'Risultato Atteso',
+    'Codice Riferimento',
+    'Esito (OK/KO)',
+    'Note',
+    'Esito (OK/KO) post correzione',
+  ];
   rows.push(headers);
 
   let testId = 1;
 
   // Helper per aggiungere righe
-  const addTest = (area, oggetto, tipo, scenario, atteso, priorita = 'Programmatore', codice = '') => {
+  const addTest = (
+    area,
+    oggetto,
+    tipo,
+    scenario,
+    atteso,
+    priorita = 'Programmatore',
+    codice = '',
+  ) => {
     rows.push([testId++, area, oggetto, tipo, scenario, atteso, codice, '']);
   };
 
@@ -638,7 +866,8 @@ function downloadTestCases() {
         .map((action) =>
           action.classes
             .map((c) => {
-              if (c.type === 'paramsList') return `[Params] ${(c.params || []).map((p) => `${p.name}=${p.alias}`).join('; ')}`;
+              if (c.type === 'paramsList')
+                return `[Params] ${(c.params || []).map((p) => `${p.name}=${p.alias}`).join('; ')}`;
               return `[${c.type}] ${c.script || c.sql}`;
             })
             .join('\n'),
@@ -659,7 +888,10 @@ function downloadTestCases() {
   // 1.2 Nuovi Test Globali (Page Name & Alias)
   const pg = TEST_TEMPLATES.GLOBAL.PAGE_NAME;
   addTest('Global', pg.OBJ, pg.TYPE, pg.SCENARIO, pg.EXPECTED, pg.PRIO);
-  const al = tpl(TEST_TEMPLATES.GLOBAL.MASK_ALIAS, currentFilename.replace(/\.xml$/i, '').toLowerCase());
+  const al = tpl(
+    TEST_TEMPLATES.GLOBAL.MASK_ALIAS,
+    currentFilename.replace(/\.xml$/i, '').toLowerCase(),
+  );
   addTest('Global', al.OBJ, al.TYPE, al.SCENARIO, al.EXPECTED, al.PRIO);
 
   // 2. Iterazione su Grids
@@ -720,7 +952,10 @@ function downloadTestCases() {
       const fieldName = field.label || field.name;
 
       // Editabilità (testiamo il readonly puntuale solo se la grid in generale permette l'update)
-      if (grid.updateAllowed === 'true' && (field.isEditable === 'false' || field.updateAllowed === 'false')) {
+      if (
+        grid.updateAllowed === 'true' &&
+        (field.isEditable === 'false' || field.updateAllowed === 'false')
+      ) {
         const p = tpl(TEST_TEMPLATES.GRID.FIELD_READONLY, fieldName);
         addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
       } else {
@@ -731,19 +966,33 @@ function downloadTestCases() {
         }
 
         // Obbligatorietà
-        if (field.isEditable !== 'false' && field.isMandatory === 'true' && (grid.insertAllowed === 'true' || grid.updateAllowed === 'true')) {
+        if (
+          field.isEditable !== 'false' &&
+          field.isMandatory === 'true' &&
+          (grid.insertAllowed === 'true' || grid.updateAllowed === 'true')
+        ) {
           const p = tpl(TEST_TEMPLATES.GRID.FIELD_MANDATORY, fieldName);
           addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
         }
         // Lunghezza
-        if (grid.updateAllowed === 'true' && (field.isEditable === 'true' || field.updateAllowed === 'true') && field.length && parseInt(field.length) > 0) {
+        if (
+          grid.updateAllowed === 'true' &&
+          (field.isEditable === 'true' || field.updateAllowed === 'true') &&
+          field.length &&
+          parseInt(field.length) > 0
+        ) {
           const p = tpl(TEST_TEMPLATES.GRID.FIELD_LENGTH, fieldName, field.length);
           addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
         }
 
         // ValidRegex
         if (field.isEditable !== 'false' && field.validRegex) {
-          const p = tpl(TEST_TEMPLATES.GRID.FIELD_REGEX, fieldName, field.validRegex.regex, field.validRegex.message || 'Errore validazione');
+          const p = tpl(
+            TEST_TEMPLATES.GRID.FIELD_REGEX,
+            fieldName,
+            field.validRegex.regex,
+            field.validRegex.message || 'Errore validazione',
+          );
           addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO);
         }
       }
@@ -751,7 +1000,12 @@ function downloadTestCases() {
 
     // C. Validazioni Logiche (Before Commit)
     grid.beforeCommitValidation.forEach((bc) => {
-      const p = tpl(TEST_TEMPLATES.GRID.LOGIC_BEFORE_COMMIT, bc.name, bc.function || 'SQL Check', bc.failMessage);
+      const p = tpl(
+        TEST_TEMPLATES.GRID.LOGIC_BEFORE_COMMIT,
+        bc.name,
+        bc.function || 'SQL Check',
+        bc.failMessage,
+      );
       addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO, bc.sql || '');
     });
 
@@ -775,9 +1029,18 @@ function downloadTestCases() {
                 const fieldLabel = fieldObj && fieldObj.label ? fieldObj.label : fieldName;
 
                 const contextMsg = fieldLabel ? ` sul campo "${fieldLabel}"` : '';
-                const arg1 = template === TEST_TEMPLATES.GRID.LOGIC_GENERIC ? contextMsg : fieldLabel;
+                const arg1 =
+                  template === TEST_TEMPLATES.GRID.LOGIC_GENERIC ? contextMsg : fieldLabel;
                 const p = tpl(template, evt.name, arg1, cls.failMessage);
-                addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO, cls.script || cls.sql || '');
+                addTest(
+                  gridName,
+                  p.OBJ,
+                  p.TYPE,
+                  p.SCENARIO,
+                  p.EXPECTED,
+                  p.PRIO,
+                  cls.script || cls.sql || '',
+                );
               }
             });
           }
@@ -789,11 +1052,13 @@ function downloadTestCases() {
     const allButtons = [...grid.topToolbarButtons, ...grid.bottomToolbarButtons];
     allButtons.forEach((btn) => {
       const btnLabel = btn.label || btn.name;
-      if (btnLabel === 'Esegui filtro' || btnLabel === 'Pulisci filtro' || btnLabel === 'Indietro') return;
+      if (btnLabel === 'Esegui filtro' || btnLabel === 'Pulisci filtro' || btnLabel === 'Indietro')
+        return;
 
       let actionDesc = 'Esecuzione azione';
       if (btn.callFormName) actionDesc = `Apertura form/popup`;
-      else if (btn.actionRef.length > 0) actionDesc = `Esecuzione logica: ${btn.actionRef.join(', ')}`;
+      else if (btn.actionRef.length > 0)
+        actionDesc = `Esecuzione logica: ${btn.actionRef.join(', ')}`;
 
       let codeRef = '';
       if (btn.groovyScripts && btn.groovyScripts.length > 0) {
@@ -801,7 +1066,8 @@ function downloadTestCases() {
           .map((action) =>
             action.classes
               .map((c) => {
-                if (c.type === 'paramsList') return `[Params] ${(c.params || []).map((p) => `${p.name}=${p.alias}`).join('; ')}`;
+                if (c.type === 'paramsList')
+                  return `[Params] ${(c.params || []).map((p) => `${p.name}=${p.alias}`).join('; ')}`;
                 return `[${c.type}] ${c.script || c.sql}`;
               })
               .join('\n'),
@@ -822,7 +1088,11 @@ function downloadTestCases() {
     });
 
     grid.comboboxes.forEach((combo) => {
-      const p = tpl(TEST_TEMPLATES.GRID.COMBO_LOAD, combo.label || combo.name, combo.label || combo.name);
+      const p = tpl(
+        TEST_TEMPLATES.GRID.COMBO_LOAD,
+        combo.label || combo.name,
+        combo.label || combo.name,
+      );
       addTest(gridName, p.OBJ, p.TYPE, p.SCENARIO, p.EXPECTED, p.PRIO, combo.sqlValue || '');
       // Nota: Le combo non hanno ricerca e lente, quindi non aggiungiamo LOV_CONFIG qui
     });

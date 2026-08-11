@@ -9,6 +9,7 @@ function renderData(data) {
   document.getElementById('downloadWordBtn').disabled = false;
   document.getElementById('downloadTestBtn').disabled = false;
   document.getElementById('downloadApexBtn').disabled = false;
+  document.getElementById('downloadJSONBtn').disabled = false;
   document.getElementById('wizardModeBtn').disabled = false;
 
   // Aggiunge il bottone Mappa Layout accanto al bottone Test se non esiste
@@ -30,8 +31,10 @@ function renderData(data) {
 
   const xmlCode = currentFilename.replace(/\.xml$/i, '');
 
-  const isPopupMode = (appSettings.popupForms || []).some(pf => pf.toUpperCase() === xmlCode.toUpperCase());
-  const modeBadge = isPopupMode 
+  const isPopupMode = (appSettings.popupForms || []).some(
+    (pf) => pf.toUpperCase() === xmlCode.toUpperCase(),
+  );
+  const modeBadge = isPopupMode
     ? `<span class="badge" style="background-color: #f97316; color: white; font-size: 11px; margin-left: 10px; vertical-align: middle; padding: 2px 8px; border-radius: 4px; font-weight: bold;">POPUP</span>`
     : `<span class="badge" style="background-color: #0ea5e9; color: white; font-size: 11px; margin-left: 10px; vertical-align: middle; padding: 2px 8px; border-radius: 4px; font-weight: bold;">PAGE</span>`;
 
@@ -41,7 +44,9 @@ function renderData(data) {
     fileNameDisplay.innerHTML = `${currentFilename} ${modeBadge}`;
   }
 
-  const descriptionHtml = data.description ? `<span style="font-weight: normal; margin-left: 10px; color: #4b5563;">- ${data.description}</span>` : '';
+  const descriptionHtml = data.description
+    ? `<span style="font-weight: normal; margin-left: 10px; color: #4b5563;">- ${data.description}</span>`
+    : '';
 
   html += `
             <div class="description-box">
@@ -120,10 +125,17 @@ function renderData(data) {
       });
     }
 
-    const filteredGlobalActions = data.globalActions.filter((action) => !usedActions.has(action.actionName));
+    const filteredGlobalActions = data.globalActions.filter(
+      (action) => !usedActions.has(action.actionName),
+    );
 
     if (filteredGlobalActions.length > 0) {
-      html += renderSection('Azioni Globali (Definizioni)', 'form-global-actions', filteredGlobalActions.length, renderGroovyScripts(filteredGlobalActions, 'global'));
+      html += renderSection(
+        'Azioni Globali (Definizioni)',
+        'form-global-actions',
+        filteredGlobalActions.length,
+        renderGroovyScripts(filteredGlobalActions, 'global'),
+      );
     }
   }
 
@@ -140,7 +152,9 @@ function renderData(data) {
   };
 
   // 1. Standalone grids
-  const standaloneGrids = data.grids.filter((g) => !g.tab && !popupGridNames.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
+  const standaloneGrids = data.grids
+    .filter((g) => !g.tab && !popupGridNames.includes(g.name))
+    .sort((a, b) => getOrder(a) - getOrder(b));
 
   // 2. Tab grids
   const tabs = {};
@@ -164,18 +178,28 @@ function renderData(data) {
   });
 
   // 3. Popup grids
-  const popupGrids = data.grids.filter((g) => popupGridNames.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
+  const popupGrids = data.grids
+    .filter((g) => popupGridNames.includes(g.name))
+    .sort((a, b) => getOrder(a) - getOrder(b));
 
   const sbAllGrids = [...standaloneGrids, ...tabGrids, ...popupGrids];
   sbAllGrids.forEach((grid) => {
     const hasTemplates = Object.keys(grid.templates).length > 0;
 
     // Raggruppamento Eventi
-    const evAbilitazioni = grid.events.filter((e) => ['whennewforminstance', 'whennewrecordinstance', 'whenrecordfetched'].includes(e.name.toLowerCase()));
+    const evAbilitazioni = grid.events.filter((e) =>
+      ['whennewforminstance', 'whennewrecordinstance', 'whenrecordfetched'].includes(
+        e.name.toLowerCase(),
+      ),
+    );
 
-    const evControlli = grid.events.filter((e) => ['whenexitchangedrecord', 'whenfinisheditvalue'].includes(e.name.toLowerCase()));
+    const evControlli = grid.events.filter((e) =>
+      ['whenexitchangedrecord', 'whenfinisheditvalue'].includes(e.name.toLowerCase()),
+    );
 
-    const evAltri = grid.events.filter((e) => !evAbilitazioni.includes(e) && !evControlli.includes(e));
+    const evAltri = grid.events.filter(
+      (e) => !evAbilitazioni.includes(e) && !evControlli.includes(e),
+    );
 
     // Determina posizione (Tab o Popup)
     let locationInfo = '';
@@ -192,16 +216,24 @@ function renderData(data) {
     let summaryBadgesHtml = '';
     const summaryItems = [];
     if (evAbilitazioni.length > 0) {
-      summaryItems.push(`<span class="summary-badge sb-abil" title="Abilitazioni">Abil (${evAbilitazioni.length})</span>`);
+      summaryItems.push(
+        `<span class="summary-badge sb-abil" title="Abilitazioni">Abil (${evAbilitazioni.length})</span>`,
+      );
     }
     if (evControlli.length > 0) {
-      summaryItems.push(`<span class="summary-badge sb-ctrl" title="Controlli">Ctrl (${evControlli.length})</span>`);
+      summaryItems.push(
+        `<span class="summary-badge sb-ctrl" title="Controlli">Ctrl (${evControlli.length})</span>`,
+      );
     }
     if (grid.listOfValues.length > 0) {
-      summaryItems.push(`<span class="summary-badge sb-lov" title="List Of Values">LOV (${grid.listOfValues.length})</span>`);
+      summaryItems.push(
+        `<span class="summary-badge sb-lov" title="List Of Values">LOV (${grid.listOfValues.length})</span>`,
+      );
     }
     if (grid.comboboxes.length > 0) {
-      summaryItems.push(`<span class="summary-badge sb-combo" title="Combobox">Combo (${grid.comboboxes.length})</span>`);
+      summaryItems.push(
+        `<span class="summary-badge sb-combo" title="Combobox">Combo (${grid.comboboxes.length})</span>`,
+      );
     }
 
     if (summaryItems.length > 0) {
@@ -225,9 +257,17 @@ function renderData(data) {
   // --- GRIDS HELPER ---
   const renderGridHtml = (grid, idx) => {
     const hasTemplates = Object.keys(grid.templates).length > 0;
-    const evAbilitazioni = grid.events.filter((e) => ['whennewforminstance', 'whennewrecordinstance', 'whenrecordfetched'].includes(e.name.toLowerCase()));
-    const evControlli = grid.events.filter((e) => ['whenexitchangedrecord', 'whenfinisheditvalue'].includes(e.name.toLowerCase()));
-    const evAltri = grid.events.filter((e) => !evAbilitazioni.includes(e) && !evControlli.includes(e));
+    const evAbilitazioni = grid.events.filter((e) =>
+      ['whennewforminstance', 'whennewrecordinstance', 'whenrecordfetched'].includes(
+        e.name.toLowerCase(),
+      ),
+    );
+    const evControlli = grid.events.filter((e) =>
+      ['whenexitchangedrecord', 'whenfinisheditvalue'].includes(e.name.toLowerCase()),
+    );
+    const evAltri = grid.events.filter(
+      (e) => !evAbilitazioni.includes(e) && !evControlli.includes(e),
+    );
     const isGridDone = progressData[`grid-done-${grid.name}`] === true;
 
     return `
@@ -413,7 +453,11 @@ function renderData(data) {
                     'Abilitazioni',
                     `events-abil-${idx}`,
                     evAbilitazioni.length,
-                    evAbilitazioni.length > 0 ? evAbilitazioni.map((evt, eIdx) => renderEventBlock(evt, idx, `abil-${eIdx}`)).join('') : '<p class="text-gray">Nessun evento di abilitazione</p>',
+                    evAbilitazioni.length > 0
+                      ? evAbilitazioni
+                          .map((evt, eIdx) => renderEventBlock(evt, idx, `abil-${eIdx}`))
+                          .join('')
+                      : '<p class="text-gray">Nessun evento di abilitazione</p>',
                   )}
 
                   ${renderSection('Controlli', `events-ctrl-${idx}`, evControlli.length, evControlli.length > 0 ? evControlli.map((evt, eIdx) => renderEventBlock(evt, idx, `ctrl-${eIdx}`)).join('') : '<p class="text-gray">Nessun controllo</p>')}
@@ -453,7 +497,7 @@ function renderData(data) {
                                   : ''
                               }
                               <p class="text-sm mb-2"><span class="info-label">ActionRef:</span> ${btn.actionRef.join(', ') || 'Nessuno'}</p>
-                              
+
                               ${
                                 btn.groovyScripts.length > 0
                                   ? `
@@ -504,7 +548,7 @@ function renderData(data) {
                                   : ''
                               }
                               <p class="text-sm mb-2"><span class="info-label">ActionRef:</span> ${btn.actionRef.join(', ') || 'Nessuno'}</p>
-                              
+
                               ${
                                 btn.groovyScripts.length > 0
                                   ? `
@@ -593,7 +637,7 @@ function renderData(data) {
                     : ''
                 }
              </div>
-             
+
              <div class="popup-grids">
                 ${data.grids
                   .filter((g) => popup.grids.includes(g.name))
@@ -724,7 +768,10 @@ function renderGroovyScripts(scripts, prefix) {
                   }
                   if (item.type === 'paramsList') {
                     let callFormHelp = '';
-                    if (item.classType === 'CallFormAction' || item.className === 'CallFormAction') {
+                    if (
+                      item.classType === 'CallFormAction' ||
+                      item.className === 'CallFormAction'
+                    ) {
                       callFormHelp = renderCallFormHint(item.formName);
                     }
                     return `
@@ -772,7 +819,10 @@ function renderGroovyScripts(scripts, prefix) {
     .join('');
 
   // Calcola il numero totale di blocchi di codice
-  const totalBlocks = scripts.reduce((acc, curr) => acc + (curr.classes ? curr.classes.length : 0), 0);
+  const totalBlocks = scripts.reduce(
+    (acc, curr) => acc + (curr.classes ? curr.classes.length : 0),
+    0,
+  );
 
   if (totalBlocks > 1) {
     return `
@@ -852,11 +902,15 @@ function renderLayoutMap(data) {
   // Popups
   const popups = data.popups.map((p) => ({
     ...p,
-    grids: data.grids.filter((g) => p.grids.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b)),
+    grids: data.grids
+      .filter((g) => p.grids.includes(g.name))
+      .sort((a, b) => getOrder(a) - getOrder(b)),
   }));
 
   // Standalone
-  const standaloneGrids = data.grids.filter((g) => !g.tab && !popupGridNames.includes(g.name)).sort((a, b) => getOrder(a) - getOrder(b));
+  const standaloneGrids = data.grids
+    .filter((g) => !g.tab && !popupGridNames.includes(g.name))
+    .sort((a, b) => getOrder(a) - getOrder(b));
 
   // 2. Build HTML
   let html = `<div class="layout-map-container">${styles}`;
